@@ -2106,9 +2106,8 @@ export default function App() {
           <div>
             <h1 className="font-bold text-text-primary flex items-baseline gap-2">
               <span className="text-[27px]">mostrador</span>
-              <span className="text-[13.5px] text-text-secondary font-normal">(versión 0)</span>
+              <span className="text-[13.5px] text-text-secondary font-normal">v1</span>
             </h1>
-            <p className="text-xs text-text-secondary">Entorno virtual interactivo</p>
           </div>
         </div>
         
