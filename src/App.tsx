@@ -112,7 +112,7 @@ const ContainerSettingsModal = ({
             <Settings className="w-5 h-5" />
             Apariencia del Contenedor
           </h3>
-          <button onClick={onClose} className="p-1 rounded-md text-text-secondary hover:bg-surface-pill transition-colors">
+          <button onClick={onClose} aria-label="Cerrar" className="p-1 rounded-md text-text-secondary hover:bg-surface-pill transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -128,6 +128,7 @@ const ContainerSettingsModal = ({
             <label className="text-sm font-bold text-text-secondary flex items-center gap-2"><Type className="w-4 h-4"/> Nombre del Contenedor</label>
             <input
               type="text"
+              aria-label="Nombre del Contenedor"
               className="w-full bg-surface-base border border-border-lite rounded-lg px-3 py-2 text-text-primary focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
               value={name}
               onChange={(e) => {
@@ -277,7 +278,7 @@ const FilePreviewModal = ({ fileEntry, name, onClose }: { fileEntry?: FileEntry,
       <div className="relative bg-surface-card p-0 rounded-2xl shadow-2xl max-w-5xl w-full max-h-screen flex flex-col border border-border-lite" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center p-4 border-b border-border-lite bg-surface-base rounded-t-2xl">
           <span className="font-bold text-lg text-text-primary truncate pr-4">{name}</span>
-          <button onClick={onClose} className="text-text-secondary hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-500/10 focus:outline-none">
+          <button onClick={onClose} aria-label="Cerrar" className="text-text-secondary hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-500/10 focus:outline-none">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -286,11 +287,11 @@ const FilePreviewModal = ({ fileEntry, name, onClose }: { fileEntry?: FileEntry,
           {isImage && (
             <>
               <div className="absolute top-6 right-6 flex items-center gap-1 z-10 bg-surface-card/90 backdrop-blur-md p-1.5 rounded-lg shadow-lg border border-border-lite">
-                <button onClick={zoomOut} className="p-1.5 hover:bg-surface-base rounded-md text-text-secondary hover:text-text-primary"><ZoomOut className="w-4 h-4" /></button>
+                <button onClick={zoomOut} aria-label="Alejar" className="p-1.5 hover:bg-surface-base rounded-md text-text-secondary hover:text-text-primary"><ZoomOut className="w-4 h-4" /></button>
                 <span className="text-xs font-mono w-10 text-center select-none">{Math.round(scale * 100)}%</span>
-                <button onClick={zoomIn} className="p-1.5 hover:bg-surface-base rounded-md text-text-secondary hover:text-text-primary"><ZoomIn className="w-4 h-4" /></button>
+                <button onClick={zoomIn} aria-label="Acercar" className="p-1.5 hover:bg-surface-base rounded-md text-text-secondary hover:text-text-primary"><ZoomIn className="w-4 h-4" /></button>
                 <div className="w-px h-4 bg-border-mute mx-1"></div>
-                <button onClick={resetZoom} className="p-1.5 hover:bg-surface-base rounded-md text-text-secondary hover:text-text-primary"><Maximize className="w-4 h-4" /></button>
+                <button onClick={resetZoom} aria-label="Restablecer zoom" className="p-1.5 hover:bg-surface-base rounded-md text-text-secondary hover:text-text-primary"><Maximize className="w-4 h-4" /></button>
               </div>
               <div className="overflow-auto w-full h-full flex items-center justify-center custom-scrollbar">
                 <img src={previewUrl} alt={name} style={{ transform: `scale(${scale})`, transition: 'transform 0.2s ease-out', transformOrigin: 'center' }} className="object-contain max-h-[70vh] rounded-lg" />
@@ -2016,7 +2017,7 @@ export default function App() {
                  Deshacer
                </button>
              )}
-             <button onClick={() => setRecentAction(null)} className="text-text-secondary hover:text-text-primary rounded-full p-1 -mr-2 transition-colors">
+             <button onClick={() => setRecentAction(null)} aria-label="Cerrar" className="text-text-secondary hover:text-text-primary rounded-full p-1 -mr-2 transition-colors">
                <X className="w-4 h-4" />
              </button>
           </div>
@@ -2488,6 +2489,7 @@ export default function App() {
                                                   <input
                                                     ref={focusedInputRef}
                                                     type="text"
+                                                    aria-label="Renombrar contenedor"
                                                     value={focusedContainerEditName}
                                                     onChange={e => setFocusedContainerEditName(e.target.value)}
                                                     onBlur={() => {
