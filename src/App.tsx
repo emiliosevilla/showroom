@@ -917,11 +917,12 @@ const ListViewTable = ({ containers, scannedFiles }: { containers: { id: string,
   const sortedFiles = useMemo(() => {
     let sortableItems = [...filteredFiles];
     if (sortConfig !== null) {
+      const key = sortConfig.key === 'date' ? 'lastModified' : sortConfig.key;
       sortableItems.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
+        if (a[key] < b[key]) {
           return sortConfig.direction === 'asc' ? -1 : 1;
         }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
+        if (a[key] > b[key]) {
           return sortConfig.direction === 'asc' ? 1 : -1;
         }
         return 0;
@@ -2394,7 +2395,7 @@ export default function App() {
                             paddingAngle={5}
                             dataKey="value"
                             nameKey="name"
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                             labelLine={false}
                           >
                             {pieData.map((entry, index) => (
@@ -2402,7 +2403,7 @@ export default function App() {
                             ))}
                           </Pie>
                           <RechartsTooltip 
-                            formatter={(value: number, name: string) => [`${value} archivos`, name]}
+                            formatter={(value, name) => [`${value} archivos`, name]}
                             contentStyle={{ borderRadius: '8px', zIndex: 1000 }}
                           />
                         </PieChart>
