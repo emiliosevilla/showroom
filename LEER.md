@@ -1,6 +1,6 @@
-# showme
+# showroom
 
-Organizador de carpetas locales que se ejecuta 100% en el navegador. `showme`
+Organizador de carpetas locales que se ejecuta 100% en el navegador. `showroom`
 escanea una carpeta de tu equipo, clasifica sus archivos automáticamente en
 categorías ("contenedores") y te deja reorganizarlos con drag & drop antes de
 aplicar los cambios de vuelta al disco, exportarlos a un ZIP o generar una

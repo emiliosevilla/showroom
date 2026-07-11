@@ -9,11 +9,17 @@ export function getImagePreview(file: File | undefined): string {
     }
 }
 
-export function generateEnhancedHtmlString(folderName: string, classification: ClassificationResult): string {
+export function generateEnhancedHtmlString(folderName: string, classification: ClassificationResult, t: (k: any) => string): string {
     const safeBase = folderName;
 
+    // Translate container names before serializing
+    const translatedContainers = classification.containers.map(c => ({
+      ...c,
+      name: c.name.startsWith('cat_') ? t(c.name) : c.name
+    }));
+
     // Prepare JSON for vanilla JS injection
-    const containersJson = JSON.stringify(classification.containers);
+    const containersJson = JSON.stringify(translatedContainers);
 
     return `<!DOCTYPE html>
 <html lang="es">
@@ -101,7 +107,7 @@ export function generateEnhancedHtmlString(folderName: string, classification: C
             </div>
         </div>
         <button id="backBtn" class="hidden px-5 py-2.5 rounded-lg bg-c-pill hover:opacity-80 text-sm font-semibold transition-colors border border-c-lite text-c-main shadow-sm">
-            Volver a la vista general
+            ← ${t('html_back')}
         </button>
     </header>
 
@@ -109,7 +115,7 @@ export function generateEnhancedHtmlString(folderName: string, classification: C
     <main id="mainContainer" class="flex-1 p-8 md:p-12 transition-all duration-500 ease-out bg-c-base">
         <!-- Dashboard View (Grid of containers) -->
         <div id="dashboardView" class="max-w-7xl mx-auto grids-wrapper">
-            <h2 class="text-xs font-bold uppercase tracking-wider mb-8 text-c-muted">Contenedores</h2>
+            <h2 class="text-xs font-bold uppercase tracking-wider mb-8 text-c-muted">${t('containers')}</h2>
             <div id="containersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <!-- Javascript will populate this -->
             </div>
@@ -118,7 +124,7 @@ export function generateEnhancedHtmlString(folderName: string, classification: C
         <!-- Detail View -->
         <div id="detailView" class="hidden max-w-7xl mx-auto h-full flex flex-col">
             <div class="mb-10 text-center">
-                <h2 id="detailTitle" class="text-4xl md:text-5xl font-bold tracking-tight text-c-main">Nombre del Contenedor</h2>
+                <h2 id="detailTitle" class="text-4xl md:text-5xl font-bold tracking-tight text-c-main">${t('container_name')}</h2>
                 <div class="h-1 w-20 bg-indigo-500 mx-auto mt-6 rounded-full"></div>
             </div>
             
@@ -182,7 +188,7 @@ export function generateEnhancedHtmlString(folderName: string, classification: C
                 btn.innerHTML = \`
                     <div class="mb-6 w-full flex justify-center opacity-80 group-hover:opacity-100 transition-opacity transform group-hover:scale-110 duration-500">\${innerVisuals}</div>
                     <h3 class="text-2xl font-bold text-c-main">\${container.name}</h3>
-                    <p class="text-c-muted font-mono text-xs mt-3">[\${container.files.length}] elementos</p>
+                    <p class="text-c-muted font-mono text-xs mt-3">[\${container.files.length}] ${t('html_elements')}</p>
                 \`;
                 grid.appendChild(btn);
             });

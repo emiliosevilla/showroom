@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useLanguage } from './i18n/LanguageContext';
 import { scanDirectory, FileEntry, processFileList, applyChangesToDisk } from './utils/fileSystem';
 import { setKey, getKey } from './utils/idb';
 import { classifyFiles, ClassificationResult } from './services/classifier';
@@ -79,6 +80,8 @@ const ContainerSettingsModal = ({
   onClose: () => void,
   onSave: (updates: { name: string, color?: string, icon?: string }) => void
 }) => {
+  const { t } = useLanguage();
+  
   const [name, setName] = useState(container.name);
   const [color, setColor] = useState(container.color);
   const [icon, setIcon] = useState(container.icon);
@@ -87,18 +90,18 @@ const ContainerSettingsModal = ({
   const handleSave = () => {
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("El nombre no puede estar vacío");
+      setError(t("name_empty"));
       return;
     }
     
     // Check for invalid characters (allow alphanumeric, spaces, dashes, underscores)
     if (!/^[a-zA-Z0-9_\-\s]+$/.test(trimmed)) {
-      setError("El nombre solo puede contener letras, números, espacios, guiones y guiones bajos.");
+      setError(t("name_invalid"));
       return;
     }
     
     if (existingNames.includes(trimmed.toLowerCase())) {
-      setError("Ya existe un contenedor con este nombre");
+      setError(t("name_exists"));
       return;
     }
     onSave({ name: trimmed, color, icon });
@@ -139,7 +142,7 @@ const ContainerSettingsModal = ({
           </div>
 
           <div className="space-y-3">
-            <label className="text-sm font-bold text-text-secondary">Color</label>
+            <label className="text-sm font-bold text-text-secondary">{t("color")}</label>
             <div className="flex flex-wrap gap-2">
               <button 
                 onClick={() => setColor(undefined)}
@@ -162,7 +165,7 @@ const ContainerSettingsModal = ({
           </div>
 
           <div className="space-y-3">
-            <label className="text-sm font-bold text-text-secondary">Icono</label>
+            <label className="text-sm font-bold text-text-secondary">{t("icon")}</label>
             <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
               <button
                 onClick={() => setIcon(undefined)}
@@ -232,6 +235,7 @@ const GridDroppableArea = ({ containerId, isTrash = false, children }: { contain
 };
 
 const FilePreviewModal = ({ fileEntry, name, onClose }: { fileEntry?: FileEntry, name: string, onClose: () => void }) => {
+  const { t } = useLanguage();
   const isImage = fileEntry?.extension && ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(fileEntry.extension);
   const isVideo = fileEntry?.extension && ['mp4', 'webm', 'ogg'].includes(fileEntry.extension);
   const isAudio = fileEntry?.extension && ['mp3', 'wav', 'ogg'].includes(fileEntry.extension);
@@ -277,7 +281,7 @@ const FilePreviewModal = ({ fileEntry, name, onClose }: { fileEntry?: FileEntry,
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="relative bg-surface-card p-0 rounded-2xl shadow-2xl max-w-5xl w-full max-h-screen flex flex-col border border-border-lite" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center p-4 border-b border-border-lite bg-surface-base rounded-t-2xl">
-          <span className="font-bold text-lg text-text-primary truncate pr-4">{name}</span>
+          <span className="font-bold text-lg text-text-primary truncate pr-4">{name.startsWith("cat_") ? t(name as any) : name}</span>
           <button onClick={onClose} aria-label="Cerrar" className="text-text-secondary hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-500/10 focus:outline-none">
             <X className="w-5 h-5" />
           </button>
@@ -362,6 +366,7 @@ const FileItem = ({
   dropFeedback?: 'success-normal' | 'success-trash' | 'abort';
   index?: number;
 }) => {
+  const { t } = useLanguage();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFavorite, setIsFavorite] = useState(() => {
     return localStorage.getItem(`favorite-${id}`) === 'true';
@@ -435,7 +440,7 @@ const FileItem = ({
       >
         <div className="w-full flex items-center justify-between gap-1">
           <div {...listeners} {...attributes} className="flex-1 truncate outline-none self-stretch flex items-center">
-            <span className={`truncate ${isFavorite ? 'text-amber-500 font-semibold' : ''}`}>{name}</span>
+            <span className={`truncate ${isFavorite ? 'text-amber-500 font-semibold' : ''}`}>{name.startsWith("cat_") ? t(name as any) : name}</span>
           </div>
           <div className="flex items-center">
             <button
@@ -454,12 +459,12 @@ const FileItem = ({
                   navigator.share({
                     title: name,
                     text: `Mira este archivo: ${name}`,
-                  }).catch(err => console.error('Error sharing:', err));
+                  }).catch(err => console.error(t('error_sharing'), err));
                 } else {
                   alert(`Opciones de compartir para: ${name}`);
                 }
               }}
-              title="Compartir"
+              title={t("share")}
               aria-label="Compartir"
             >
               <Share2 className="w-4 h-4" />
@@ -468,7 +473,7 @@ const FileItem = ({
               <button
                 className="p-1.5 text-text-secondary hover:text-indigo-600 hover:bg-surface-base rounded-md transition-colors flex-shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
-                title="Previsualizar"
+                title={t("preview")}
                 aria-label="Previsualizar"
               >
                 <Search className="w-4 h-4" />
@@ -516,6 +521,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
   requestConfirm?: (msg: string, onConfirm: () => void) => void;
   existingNames?: string[];
 }) => {
+  const { t } = useLanguage();
   const { 
     setNodeRef, 
     isOver, 
@@ -558,7 +564,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
   const handleRenameSubmit = () => {
     const trimmed = editName.trim();
     if (!trimmed) {
-      alert("El nombre del contenedor no puede estar vacío.");
+      alert(t("name_empty"));
       setEditName(name); // Reset to original
       setIsEditing(false);
       return;
@@ -566,7 +572,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
     
     // Check for invalid characters (allow alphanumeric, spaces, dashes, underscores)
     if (!/^[a-zA-Z0-9_\-\s]+$/.test(trimmed)) {
-      alert("El nombre contiene caracteres especiales no permitidos. Solo se admiten letras, números, espacios, guiones y guiones bajos.");
+      alert(t("name_invalid"));
       setEditName(name); // Reset to original
       setIsEditing(false);
       return;
@@ -603,7 +609,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
 
   const handleDeleteSelected = () => {
     if (containerSelectedFiles.length > 0 && onTrashAction) {
-      doConfirm(`¿Eliminar permanentemente ${containerSelectedFiles.length} archivo(s)?`, () => {
+      doConfirm(t("confirm_delete", containerSelectedFiles.length), () => {
         onTrashAction('delete', containerSelectedFiles);
       });
     }
@@ -654,14 +660,14 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
                 onBlur={handleRenameSubmit}
                 onKeyDown={handleKeyDown}
                 onClick={e => e.stopPropagation()}
-                aria-label="Renombrar contenedor"
+                aria-label={t("rename_container")}
               />
             ) : (
               <span 
                 className={`container-header-interactive truncate focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isExpanded ? 'cursor-text hover:bg-black/5 dark:hover:bg-white/5 py-0.5 px-1 rounded -ml-1 transition-colors' : 'text-lg overflow-visible tracking-widest rotate-180'}`}
                 tabIndex={(isExpanded && !isTrash) || isTrash ? 0 : undefined}
                 role={(isExpanded && !isTrash) || isTrash ? "button" : undefined}
-                aria-label={isExpanded && !isTrash ? `Renombrar contenedor ${name}` : name}
+                aria-label={isExpanded && !isTrash ? `${t('rename_container')} ${id === 'trash' ? t('trash') : name.startsWith('cat_') ? t(name as any) : name}` : (id === 'trash' ? t('trash') : name.startsWith('cat_') ? t(name as any) : name)}
                 data-container-id={id}
                 onClick={(e) => {
                   if (isExpanded && !isTrash) {
@@ -676,9 +682,9 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
                     setIsEditing(true);
                   }
                 }}
-                title={isExpanded && !isTrash ? "Click para renombrar" : name}
+                title={isExpanded && !isTrash ? t("click_to_rename") : (id === 'trash' ? t('trash') : name.startsWith('cat_') ? t(name as any) : name)}
               >
-                {name}
+                {id === 'trash' ? t('trash') : name.startsWith('cat_') ? t(name as any) : name}
               </span>
             )}
           </h3>
@@ -695,7 +701,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
               <button 
                 onClick={toggleSelection} 
                 className="flex items-center text-text-secondary hover:text-indigo-600 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded px-1 -ml-1"
-                title="Seleccionar todo"
+                title={t("select_all")}
                 aria-label={isAllSelected ? "Deseleccionar todos" : "Seleccionar todos"}
               >
                 {isAllSelected ? <CheckSquare className="w-4 h-4 mr-1" /> : <Square className="w-4 h-4 mr-1" />}
@@ -703,10 +709,10 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
               </button>
               {containerSelectedFiles.length > 0 ? (
                 <div className="flex items-center gap-2">
-                  <button onClick={handleRestoreSelected} className="flex items-center text-emerald-600 hover:text-emerald-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1" title="Restaurar seleccionados" aria-label="Restaurar seleccionados">
+                  <button onClick={handleRestoreSelected} className="flex items-center text-emerald-600 hover:text-emerald-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1" title={t("restore_selected")} aria-label="Restaurar seleccionados">
                     <RotateCcw className="w-4 h-4" />
                   </button>
-                  <button onClick={handleDeleteSelected} className="flex items-center text-red-600 hover:text-red-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-1" title="Eliminar permanentemente los seleccionados" aria-label="Eliminar permanentemente los seleccionados">
+                  <button onClick={handleDeleteSelected} className="flex items-center text-red-600 hover:text-red-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-1" title={t("delete_selected")} aria-label="Eliminar permanentemente los seleccionados">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -714,7 +720,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
                 <button 
                   onClick={() => {
                     if (onTrashAction) {
-                      doConfirm('¿Eliminar todos los archivos de la papelera permanentemente?', () => {
+                      doConfirm(t("confirm_empty_trash"), () => {
                         onTrashAction('delete', files);
                       });
                     }
@@ -734,7 +740,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
                 <button 
                   onClick={toggleSelection} 
                   className="flex items-center text-xs text-text-secondary hover:text-indigo-600 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded px-1 -ml-1"
-                  title="Seleccionar todo"
+                  title={t("select_all")}
                   aria-label={isAllSelected ? "Deseleccionar todos" : "Seleccionar todos"}
                 >
                   {isAllSelected ? <CheckSquare className="w-3.5 h-3.5 mr-1" /> : <Square className="w-3.5 h-3.5 mr-1" />}
@@ -746,7 +752,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
                   <button 
                     onClick={() => onCustomizeContainer(id)}
                     className="flex items-center text-xs hover:text-indigo-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded p-1"
-                    title="Configurar contenedor"
+                    title={t("configure")}
                     aria-label="Configurar contenedor"
                   >
                     <Settings className="w-4 h-4 mr-1" />
@@ -757,7 +763,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
                   <button 
                     onClick={() => onSort(id)}
                     className="flex items-center text-xs hover:text-indigo-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded p-1"
-                    title="Ordenar alfabéticamente"
+                    title={t("sort_alpha")}
                     aria-label="Ordenar alfabéticamente"
                   >
                     <ArrowDownAZ className="w-4 h-4 mr-1" />
@@ -815,6 +821,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
 };
 
 const PreviewTooltip = ({ file }: { file: any }) => {
+  const { t } = useLanguage();
   const isImage = file.extension && ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(file.extension.toLowerCase());
   const previewUrl = useMemo(() => {
     if (isImage && file.fileEntry?.fileObject) {
@@ -840,6 +847,7 @@ const SplitMasterItem = ({
 }: {
   key?: React.Key, id: string, name: string, color?: string, icon?: string, fileCount: number, isTrash: boolean, isFocused: boolean, onHover: () => void, onClick: () => void
 }) => {
+  const { t } = useLanguage();
   const { setNodeRef, isOver, transform, transition, attributes, listeners, isDragging } = useSortable({
     id, data: { type: 'container-list-item', containerId: id }
   });
@@ -869,7 +877,7 @@ const SplitMasterItem = ({
     >
       <div className="flex flex-1 items-center gap-3 overflow-hidden outline-none touch-none" {...attributes} {...listeners}>
          {isTrash ? <Trash2 className={`w-4 h-4 shrink-0 ${isFocused ? 'text-red-500' : 'text-red-400'}`} /> : renderIcon(icon, color, 'w-4 h-4')}
-         <span className={`font-semibold truncate text-sm select-none text-text-primary`}>{name}</span>
+         <span className={`font-semibold truncate text-sm select-none text-text-primary`}>{name.startsWith("cat_") ? t(name as any) : name}</span>
       </div>
       <span className={`text-xs font-mono w-8 text-right shrink-0 select-none text-text-secondary`}>[{fileCount}]</span>
     </div>
@@ -877,6 +885,7 @@ const SplitMasterItem = ({
 };
 
 const ListViewTable = ({ containers, scannedFiles }: { containers: { id: string, name: string, color?: string, icon?: string, files: string[] }[], scannedFiles: FileEntry[] }) => {
+  const { t } = useLanguage();
   const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'container' | 'extension' | 'date', direction: 'asc' | 'desc' } | null>(null);
   const [listSearchTerm, setListSearchTerm] = useState('');
 
@@ -947,18 +956,18 @@ const ListViewTable = ({ containers, scannedFiles }: { containers: { id: string,
           <Search className="w-4 h-4 text-text-secondary absolute left-3 top-1/2 -translate-y-1/2" />
           <input 
             type="text"
-            placeholder="Filtrar tabla..."
+            placeholder={t("filter_table")}
             value={listSearchTerm}
             onChange={(e) => setListSearchTerm(e.target.value)}
             className="w-full bg-surface-card border border-border-lite pl-9 pr-8 py-1.5 rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            aria-label="Filtrar tabla"
+            aria-label={t("filter_table_aria")}
           />
           {listSearchTerm && (
             <button 
               onClick={() => setListSearchTerm('')} 
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-secondary hover:text-text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
-              aria-label="Limpiar filtro"
-              title="Limpiar filtro"
+              aria-label={t("clear_filter")}
+              title={t("clear_filter")}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -1022,6 +1031,7 @@ const ListViewTable = ({ containers, scannedFiles }: { containers: { id: string,
 // --- Main App ---
 
 export default function App() {
+  const { t, language, toggleLanguage } = useLanguage();
   const [step, setStep] = useState<'input' | 'scanning' | 'classifying' | 'editor'>('input');
   const [viewMode, setViewMode] = useState<'grid' | 'columns' | 'list'>('grid');
   const [folderName, setFolderName] = useState('');
@@ -1079,7 +1089,7 @@ export default function App() {
           }
         }).catch(() => {});
       }
-    }).catch(err => console.log('No saved sessions', err));
+    }).catch(err => console.log(t('no_saved_sessions'), err));
   }, []);
 
   useEffect(() => {
@@ -1094,7 +1104,7 @@ export default function App() {
         // Keep only top 5 recent sessions
         currentSessions = currentSessions.slice(0, 5);
         
-        setKey('smartfolder_sessions', currentSessions).catch(err => console.error('Error saving session:', err));
+        setKey('smartfolder_sessions', currentSessions).catch(err => console.error(t('error_saving_session'), err));
         setSavedSessions(currentSessions);
       });
     }
@@ -1126,7 +1136,7 @@ export default function App() {
       if (current) setFuture(f => [current, ...f]);
       return previousState;
     });
-    setRecentAction({ message: 'Acción deshecha', timestamp: Date.now(), type: 'undo' });
+    setRecentAction({ message: t('action_undone'), timestamp: Date.now(), type: 'undo' });
   }, [history]);
 
   const handleRedo = React.useCallback(() => {
@@ -1137,7 +1147,7 @@ export default function App() {
       if (current) setHistory(h => [...h, current].slice(-30));
       return nextState;
     });
-    setRecentAction({ message: 'Acción rehecha', timestamp: Date.now(), type: 'normal' });
+    setRecentAction({ message: t('action_redone'), timestamp: Date.now(), type: 'normal' });
   }, [future]);
 
   useEffect(() => {
@@ -1299,7 +1309,7 @@ export default function App() {
       setScannedFiles(entries);
       
       if (entries.length === 0) {
-        setErrorMsg('La carpeta seleccionada parece estar vacía.');
+        setErrorMsg(t('folder_empty'));
         setStep('input');
         return;
       }
@@ -1308,7 +1318,7 @@ export default function App() {
       setStep('classifying');
       const result = await classifyFiles(cappedFiles);
       if (!result.containers.find((c: any) => c.id === 'trash')) {
-        result.containers.push({ id: 'trash', name: 'Papelera', files: [] });
+        result.containers.push({ id: 'trash', name: t('trash'), files: [] });
       }
       setClassification(result);
       setExpandedContainers(new Set());
@@ -1316,7 +1326,7 @@ export default function App() {
       setIsDirty(true);
     } catch (err: any) {
        console.error(err);
-       setErrorMsg('Ocurrió un error al procesar los archivos.');
+       setErrorMsg(t('error_processing'));
        setStep('input');
     }
   };
@@ -1328,7 +1338,7 @@ export default function App() {
       if ((await handle.queryPermission({ mode: 'read' })) !== 'granted') {
         const permission = await handle.requestPermission({ mode: 'read' });
         if (permission !== 'granted') {
-          throw new Error('Permisos denegados.');
+          throw new Error(t('permissions_denied'));
         }
       }
       setDirHandle(handle);
@@ -1410,7 +1420,7 @@ export default function App() {
       setScannedFiles(filesDesc);
       
       if (filesDesc.length === 0) {
-        setErrorMsg('La carpeta seleccionada parece estar vacía.');
+        setErrorMsg(t('folder_empty'));
         setStep('input');
         return;
       }
@@ -1423,7 +1433,7 @@ export default function App() {
       // Classify locally
       const result = await classifyFiles(cappedFiles);
       if (!result.containers.find((c: any) => c.id === 'trash')) {
-        result.containers.push({ id: 'trash', name: 'Papelera', files: [] });
+        result.containers.push({ id: 'trash', name: t('trash'), files: [] });
       }
       setClassification(result);
       setExpandedContainers(new Set());
@@ -1435,7 +1445,7 @@ export default function App() {
         // User cancelled, do nothing
         setStep('input');
       } else {
-        setErrorMsg('Error accediendo a la carpeta. Asegúrate de usar un navegador compatible (ej. Chrome o Edge).');
+        setErrorMsg(t('error_accessing_folder'));
         setStep('input');
       }
     }
@@ -1465,7 +1475,7 @@ export default function App() {
       }
       
       return { ...prev, containers: newContainers };
-    }, filesToTrash.length > 0 ? `Contenedor eliminado y ${filesToTrash.length} archivo(s) a la papelera` : 'Contenedor eliminado');
+    }, filesToTrash.length > 0 ? `${t("container_deleted")} y ${filesToTrash.length} ${t("files")} ${t("to_trash")}` : t('container_deleted'));
 
     if (filesToTrash.length > 0) {
       setTrashOriginalLocations(prev => {
@@ -1520,7 +1530,7 @@ export default function App() {
           const targetId = originalContainerId || 'otros'; // fallback original or 'otros'
           let targetIndex = newContainers.findIndex(c => c.id === targetId);
           if (targetIndex === -1) {
-             const otrosContainer = { id: 'otros', name: 'Otros', files: [] };
+             const otrosContainer = { id: 'otros', name: t('other'), files: [] };
              const tIdx = newContainers.findIndex(c => c.id === 'trash');
              if (tIdx !== -1) {
                 newContainers.splice(tIdx, 0, otrosContainer);
@@ -1585,7 +1595,7 @@ export default function App() {
       }
       setExpandedContainers(prevExpanded => new Set(prevExpanded).add(newId));
       return { ...prev, containers: newContainers };
-    }, 'Nuevo contenedor agregado');
+    }, t('new_container_added'));
   };
 
   const sortContainer = (id: string) => {
@@ -1604,7 +1614,7 @@ export default function App() {
         };
       }
       return { ...prev, containers: newContainers };
-    }, 'Contenedor ordenado alfabéticamente');
+    }, t('container_sorted'));
   };
 
   const sensors = useSensors(
@@ -1674,7 +1684,7 @@ export default function App() {
             };
           }
           return prev;
-        }, 'Contenedor reorganizado');
+        }, t('container_reorganized'));
       }
       return;
     }
@@ -1756,7 +1766,7 @@ export default function App() {
         }
       });
       return { containers: newContainers };
-    }, `Movido(s) ${filesToMove.length} archivo(s)` + (targetContainerId === 'trash' ? ' a la papelera' : ''));
+    }, `Movido(s) ${filesToMove.length} archivo(s)` + (targetContainerId === 'trash' ? t('to_trash') : ''));
 
     filesToMove.forEach((fileId: string) => {
       const sourceContainerId = classification?.containers.find(c => c.files.includes(fileId))?.id;
@@ -1778,7 +1788,7 @@ export default function App() {
 
   const handleExport = async () => {
     if (!classification) return;
-    const htmlStr = generateEnhancedHtmlString(folderName, classification);
+    const htmlStr = generateEnhancedHtmlString(folderName, classification, t);
     
     try {
       if (dirHandle) {
@@ -1792,7 +1802,7 @@ export default function App() {
         return; // Salir si tuvo éxito
       }
     } catch (e) {
-      console.log('No se pudo guardar directamente en la carpeta, usando descarga normal.', e);
+      console.log(t('save_fallback'), e);
     }
     
     // Fallback: Descarga estándar del navegador
@@ -1842,10 +1852,10 @@ export default function App() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      setRecentAction({ message: 'Archivos exportados como ZIP', timestamp: Date.now(), type: 'normal' });
+      setRecentAction({ message: t('zip_exported'), timestamp: Date.now(), type: 'normal' });
     } catch (e) {
-      console.error('Error al exportar ZIP:', e);
-      alert('Hubo un error al exportar el archivo ZIP.');
+      console.error(t('zip_error'), e);
+      alert(t('zip_error_generic'));
     } finally {
       setIsExportingZip(false);
     }
@@ -1904,7 +1914,7 @@ export default function App() {
           setIsEnvironmentReal(false);
         }, 2000);
       } catch (error: any) {
-        alert(`❌ Error al guardar en disco: ${error.message || 'Desconocido'}`);
+        alert(`❌ Error al guardar en disco: ${error.message || t('unknown')}`);
         console.error(error);
       } finally {
         setIsSavingToDisk(false);
@@ -1912,7 +1922,7 @@ export default function App() {
     };
 
     if (permanentlyDeletedFiles.length > 0) {
-      requireConfirm(`¡Atención! Has vaciado archivos de la papelera en el entorno virtual.\n\nHay ${permanentlyDeletedFiles.length} archivos que serán ELIMINADOS DEFINITIVAMENTE de tu disco duro.\n\n¿Estás seguro de que deseas continuar?`, executeApply);
+      requireConfirm(t("confirm_empty_trash"), executeApply);
     } else {
       executeApply();
     }
@@ -2043,7 +2053,7 @@ export default function App() {
       {confirmDialog.isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-surface-card border border-border-lite p-6 rounded-xl shadow-2xl max-w-sm w-full animate-in zoom-in-95 duration-200">
-            <h3 className="text-lg font-bold text-text-primary mb-3">Confirmación</h3>
+            <h3 className="text-lg font-bold text-text-primary mb-3">{t("confirmation")}</h3>
             <p className="text-text-secondary text-sm mb-6 max-h-64 overflow-y-auto whitespace-pre-wrap">{confirmDialog.message}</p>
             <div className="flex justify-end gap-3">
               <button 
@@ -2072,9 +2082,9 @@ export default function App() {
             <div className="w-24 h-24 mb-6 flex items-center justify-center rounded-full bg-red-500/10 text-red-600 dark:text-red-500 border-4 border-red-500/30 text-5xl font-black shadow-inner">
               {countdown}
             </div>
-            <h2 className="text-2xl font-bold text-text-primary mb-3">¿Estás seguro?</h2>
+            <h2 className="text-2xl font-bold text-text-primary mb-3">{t("are_you_sure")}</h2>
             <p className="text-text-secondary mb-8 text-sm">
-              Estás a punto de realizar <strong>cambios reales</strong> en tu ordenador. Se confeccionarán las nuevas carpetas organizadas y se copiarán tus archivos en ellas.
+              Estás a punto de realizar <strong>{t("real_changes")}</strong> en tu ordenador. Se confeccionarán las nuevas carpetas organizadas y se copiarán tus archivos en ellas.
             </p>
             <button 
               onClick={abortCountdown}
@@ -2092,8 +2102,8 @@ export default function App() {
         >
           <div className={`absolute top-0 left-1/2 -translate-x-1/2 bg-surface-base px-4 py-0.5 rounded-b-lg border-x-2 border-b-2 font-bold text-[8px] md:text-[10px] shadow-sm tracking-wide flex items-start gap-2 transition-colors duration-500 ${isEnvironmentReal ? 'border-red-500/50 text-red-600 dark:text-red-400' : 'border-emerald-500/40 text-emerald-700 dark:text-emerald-400'}`}>
              {isEnvironmentReal ? 
-               'ENTORNO REAL: ESTA ES LA REALIDAD DE TU ORDENADOR' : 
-               'ENTORNO VIRTUAL. NO SE HARÁN CAMBIOS EN TU ORDENADOR'
+               '{t("real_environment")}' : 
+               '{t("virtual_environment")}'
              }
           </div>
         </div>
@@ -2107,7 +2117,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="font-bold text-text-primary flex items-baseline gap-2">
-              <span className="text-[27px]">showme</span>
+              <span className="text-[27px]">showroom</span>
               <span className="text-[13.5px] text-text-secondary font-normal">v1</span>
             </h1>
           </div>
@@ -2115,9 +2125,16 @@ export default function App() {
         
         <div className="flex items-center space-x-3">
           <button 
+            onClick={toggleLanguage} 
+            className="p-2.5 rounded-xl hover:bg-surface-pill transition-colors text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-lg"
+            title={language === 'es' ? 'Switch to English' : 'Cambiar a Español'}
+          >
+            {language === 'es' ? '🇪🇸' : '🇬🇧'}
+          </button>
+          <button 
             onClick={toggleDarkMode} 
-            className="p-2 rounded-full border border-border-lite text-text-secondary hover:bg-surface-pill transition-colors mr-2 cursor-pointer"
-            title="Alternar Modo Oscuro"
+            className="p-2.5 rounded-xl hover:bg-surface-pill transition-colors text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            title={t("dark_mode_toggle")}
           >
             {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
@@ -2129,7 +2146,7 @@ export default function App() {
                   onClick={handleUndo}
                   disabled={history.length === 0}
                   className="p-2 rounded text-text-secondary hover:text-text-primary hover:bg-surface-card disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                  title="Deshacer (Ctrl+Z)"
+                  title={t("undo_shortcut")}
                 >
                   <Undo2 className="w-5 h-5" />
                 </button>
@@ -2137,17 +2154,17 @@ export default function App() {
                   onClick={handleRedo}
                   disabled={future.length === 0}
                   className="p-2 rounded text-text-secondary hover:text-text-primary hover:bg-surface-card disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                  title="Rehacer (Ctrl+Shift+Z)"
+                  title={t("redo_shortcut")}
                 >
                   <Redo2 className="w-5 h-5" />
                 </button>
               </div>
 
               <div className="flex items-center rounded-md bg-surface-pill pl-4 pr-2 py-1.5 border border-border-lite hidden md:flex">
-                <span className="mr-2 text-xs font-mono text-text-secondary">CARPETA:</span>
+                <span className="mr-2 text-xs font-mono text-text-secondary">{t("folder_label")}</span>
                 <span className="text-sm font-medium text-text-primary truncate max-w-[150px] mr-3">{folderName}</span>
                 <button onClick={handleSelectFolder} className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold px-2 py-1.5 rounded bg-surface-card border border-border-lite hover:bg-surface-base transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  Cambiar
+                  {t("change_btn")}
                 </button>
               </div>
               <button 
@@ -2155,7 +2172,7 @@ export default function App() {
                 className="flex items-center space-x-2 rounded-lg bg-surface-card border border-border-lite px-4 py-2 text-sm font-bold text-text-primary shadow-sm hover:opacity-90 transition-opacity"
               >
                 <Upload className="w-4 h-4" />
-                <span className="hidden sm:inline">Exportar espacio</span>
+                <span className="hidden sm:inline">{t("export_space")}</span>
               </button>
               <button 
                 onClick={handleExportZip}
@@ -2193,14 +2210,14 @@ export default function App() {
               className="max-w-xl w-full"
             >
               <div className="text-center mb-10">
-                <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-text-primary">Tu espacio, mejor.</h2>
-                <p className="text-text-secondary text-lg">Organiza cualquier carpeta de tu ordenador, de forma 100% privada y local.</p>
+                <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-text-primary">{t("hero_title")}</h2>
+                <p className="text-text-secondary text-lg">{t("hero_subtitle")}</p>
               </div>
 
               <div className="space-y-6">
                 {(window.self !== window.top) ? (
                   <div className="text-center bg-indigo-500/10 border border-indigo-500/20 p-6 rounded-2xl w-full">
-                    <h3 className="text-xl font-bold text-text-primary mb-2">Requiere Pestaña Nueva</h3>
+                    <h3 className="text-xl font-bold text-text-primary mb-2">{t("new_tab_req")}</h3>
                     <p className="text-text-secondary mb-6 text-sm">
                       Para acceder a tus carpetas locales necesitamos usar herramientas avanzadas del navegador. Abre la aplicación en una pestaña nueva para habilitarlas. <br/><br/><strong>Tranquilidad:</strong> el proceso es 100% local. Ni los nombres ni el contenido de tus archivos se suben a internet ni se comparten con nadie.
                     </p>
@@ -2210,7 +2227,7 @@ export default function App() {
                       rel="noopener noreferrer"
                       className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-6 py-4 text-sm font-bold text-white shadow-md transition-all"
                     >
-                      <span>Abrir aplicación en pestaña nueva</span>
+                      <span>{t("open_new_tab")}</span>
                     </a>
                   </div>
                 ) : (
@@ -2221,16 +2238,16 @@ export default function App() {
                     >
                       <div className="flex items-center gap-3">
                         <FolderSearch className="w-5 h-5 text-indigo-200 group-hover:text-white transition-colors" />
-                        <span className="font-semibold transition-colors">Seleccionar Carpeta...</span>
+                        <span className="font-semibold transition-colors">{t("select_folder_short")}</span>
                       </div>
                       <ArrowRight className="w-5 h-5 text-indigo-200 group-hover:text-white transition-colors group-hover:translate-x-1" />
                     </button>
                     <p className="text-center text-xs text-text-secondary mt-2 opacity-80">
-                      El navegador pedirá permiso para <strong>ver</strong> los archivos.
+                      {t("browser_permission_1")} <strong>{t("browser_permission_2")}</strong> {t("browser_permission_3")}
                     </p>
                     {savedSessions.length > 0 && (
                       <div className="space-y-2 mt-4 pt-4 border-t border-indigo-500/10">
-                        <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Sesiones Recientes</p>
+                        <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">{t("recent_sessions")}</p>
                         {savedSessions.map((session, index) => (
                           <button 
                             key={index}
@@ -2299,12 +2316,12 @@ export default function App() {
               <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
-                  <span className="text-text-secondary text-sm font-medium">Archivos organizados en {classification.containers.length} contenedores. Puedes arrastrar y soltar para hacer ajustes.</span>
+                  <span className="text-text-secondary text-sm font-medium">{t("files_organized_in")} {classification.containers.length} {t("containers_drag_drop")}</span>
                   {viewMode !== 'list' && (
                     <div className="ml-4 flex items-center gap-1">
-                      <button onClick={expandAll} className="px-2 py-1 text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label="Desplegar todos los contenedores">Desplegar todos</button>
+                      <button onClick={expandAll} className="px-2 py-1 text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label="Desplegar todos los contenedores">{t("expand_all")}</button>
                       <span className="text-border-heavy">|</span>
-                      <button onClick={collapseAll} className="px-2 py-1 text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label="Plegar todos los contenedores">Plegar todos</button>
+                      <button onClick={collapseAll} className="px-2 py-1 text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label="Plegar todos los contenedores">{t("collapse_all")}</button>
                     </div>
                   )}
                 </div>
@@ -2314,7 +2331,7 @@ export default function App() {
                     <button
                       onClick={() => setViewMode('grid')}
                       className={`p-1.5 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${viewMode === 'grid' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'text-text-secondary hover:text-text-primary'}`}
-                      title="Vista principal"
+                      title={t("main_view")}
                       aria-label="Vista principal"
                     >
                       <LayoutGrid className="w-4 h-4" />
@@ -2322,7 +2339,7 @@ export default function App() {
                     <button
                       onClick={() => setViewMode('list')}
                       className={`p-1.5 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${viewMode === 'list' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'text-text-secondary hover:text-text-primary'}`}
-                      title="Vista de lista"
+                      title={t("list_view")}
                       aria-label="Vista de lista"
                     >
                       <List className="w-4 h-4" />
@@ -2332,18 +2349,18 @@ export default function App() {
                     <Search className="w-4 h-4 text-text-secondary absolute left-3 top-1/2 -translate-y-1/2" />
                     <input 
                       type="text"
-                      placeholder="Buscar por nombre..."
+                      placeholder={t("search_by_name")}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full bg-surface-card border border-border-lite pl-9 pr-8 py-2 rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      aria-label="Buscar por nombre"
+                      aria-label={t("search_by_name_aria")}
                     />
                     {searchTerm && (
                       <button 
                         onClick={() => setSearchTerm('')} 
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-secondary hover:text-text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
-                        aria-label="Limpiar búsqueda"
-                        title="Limpiar búsqueda"
+                        aria-label={t("clear_search")}
+                        title={t("clear_search")}
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -2355,13 +2372,13 @@ export default function App() {
                       value={filterType}
                       onChange={(e) => setFilterType(e.target.value)}
                       className="appearance-none bg-surface-card border border-border-lite pl-9 pr-8 py-2 rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                      aria-label="Filtrar por tipo"
+                      aria-label={t("filter_by_type")}
                     >
-                      <option value="all">Tipos: Todos</option>
-                      <option value="executable">Ejecutables</option>
-                      <option value="directory">Subcarpetas</option>
-                      <option value="image">Imágenes</option>
-                      <option value="document">Documentos</option>
+                      <option value="all">{t("types_all")}</option>
+                      <option value="executable">{t("types_executables")}</option>
+                      <option value="directory">{t("types_subfolders")}</option>
+                      <option value="image">{t("types_images")}</option>
+                      <option value="document">{t("types_documents")}</option>
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-secondary">
                       <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
@@ -2370,7 +2387,7 @@ export default function App() {
                   <button
                     onClick={() => setShowDashboard(!showDashboard)}
                     className={`p-2 rounded-lg border border-border-lite transition-colors ${showDashboard ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'bg-surface-card text-text-secondary hover:text-text-primary'}`}
-                    title="Ver Estadísticas"
+                    title={t("view_stats")}
                   >
                     <PieChartIcon className="w-4 h-4" />
                   </button>
@@ -2381,7 +2398,7 @@ export default function App() {
                 <div className="mb-6 p-4 bg-surface-card rounded-xl border border-border-lite mx-auto w-full max-w-4xl shadow-sm">
                   <h3 className="text-sm font-semibold text-text-primary mb-4 flex items-center">
                     <PieChartIcon className="w-4 h-4 mr-2 text-indigo-500" />
-                    Distribución por Extensión (Total: {scannedFiles.length})
+                    {t("distribution_by_ext")} {scannedFiles.length})
                   </h3>
                   <div className="h-48 w-full">
                     {pieData.length > 0 ? (
@@ -2457,7 +2474,7 @@ export default function App() {
                                  className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-border-lite text-text-secondary hover:text-indigo-600 hover:border-indigo-400 hover:bg-surface-card bg-surface-base/30 transition-all duration-300 w-full mt-2"
                                >
                                  <Plus className="w-4 h-4" />
-                                 <span className="font-medium text-sm">Nuevo Contenedor</span>
+                                 <span className="font-medium text-sm">{t("add_container")}</span>
                                </button>
                              )}
                            </SortableContext>
@@ -2466,7 +2483,7 @@ export default function App() {
                          <div className="flex-1 bg-surface-card rounded-2xl shadow-inner relative overflow-hidden flex flex-col border border-border-lite ml-2">
                              {(()=>{
                                 const focusedContainer = filteredClassification.containers.find(c => c.id === (focusedContainerId || filteredClassification.containers[0]?.id));
-                                if (!focusedContainer) return <div className="w-full h-full flex items-center justify-center text-text-secondary">No hay contenedores</div>;
+                                if (!focusedContainer) return <div className="w-full h-full flex items-center justify-center text-text-secondary">{t("no_containers")}</div>;
                                 
                                 return (
                                   <AnimatePresence mode="popLayout">
@@ -2489,18 +2506,18 @@ export default function App() {
                                                   <input
                                                     ref={focusedInputRef}
                                                     type="text"
-                                                    aria-label="Renombrar contenedor"
+                                                    aria-label={t("rename_container")}
                                                     value={focusedContainerEditName}
                                                     onChange={e => setFocusedContainerEditName(e.target.value)}
                                                     onBlur={() => {
                                                        const trimmed = focusedContainerEditName.trim();
                                                        if (!trimmed) {
-                                                         alert("El nombre del contenedor no puede estar vacío.");
+                                                         alert(t("name_empty"));
                                                          setEditingFocusedContainerId(null);
                                                          return;
                                                        }
                                                        if (!/^[a-zA-Z0-9_\-\s]+$/.test(trimmed)) {
-                                                         alert("El nombre contiene caracteres especiales no permitidos. Solo se admiten letras, números, espacios, guiones y guiones bajos.");
+                                                         alert(t("name_invalid"));
                                                          setEditingFocusedContainerId(null);
                                                          return;
                                                        }
@@ -2541,23 +2558,23 @@ export default function App() {
                                                     const isAllSelectedInModal = focusedContainer.files.length > 0 && focusedContainer.files.every(f => selectedFiles.has(f));
                                                     if (isAllSelectedInModal) handleDeselectAll(focusedContainer.files);
                                                     else handleSelectAll(focusedContainer.files);
-                                                  }} className="p-2 bg-black/5 dark:bg-white/5 rounded-lg hover:bg-black/10 transition-colors flex items-center gap-1" title="Seleccionar/Deseleccionar todo">
+                                                  }} className="p-2 bg-black/5 dark:bg-white/5 rounded-lg hover:bg-black/10 transition-colors flex items-center gap-1" title={t("toggle_select_all")}>
                                                     {focusedContainer.files.length > 0 && focusedContainer.files.every(f => selectedFiles.has(f)) ? <CheckSquare className="w-4 h-4 text-indigo-500" /> : <Square className="w-4 h-4 text-text-secondary" />}
-                                                    <span className="text-xs font-semibold text-text-secondary">Todo</span>
+                                                    <span className="text-xs font-semibold text-text-secondary">{t("all")}</span>
                                                   </button>
                                                 )}
                                                 {focusedContainer.id !== 'trash' && (
                                                   <button onClick={() => {
                                                     setFocusedContainerEditName(focusedContainer.name);
                                                     setEditingFocusedContainerId(focusedContainer.id);
-                                                  }} className="p-2 bg-black/5 dark:bg-white/5 rounded-lg hover:bg-black/10 transition-colors" title="Renombrar contenedor">
-                                                    <span className="text-xs font-semibold text-text-secondary">Renombrar</span>
+                                                  }} className="p-2 bg-black/5 dark:bg-white/5 rounded-lg hover:bg-black/10 transition-colors" title={t("rename_container")}>
+                                                    <span className="text-xs font-semibold text-text-secondary">{t("rename")}</span>
                                                   </button>
                                                 )}
                                                 {focusedContainer.id.startsWith('custom-') && focusedContainer.files.length === 0 && (
                                                   <button onClick={() => {
                                                     requireConfirm('¿Eliminar contenedor?', () => handleDeleteContainer(focusedContainer.id, focusedContainer.files));
-                                                  }} className="p-2 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-colors" title="Eliminar contenedor">
+                                                  }} className="p-2 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-colors" title={t("delete_container")}>
                                                     <Trash2 className="w-4 h-4" />
                                                   </button>
                                                 )}
@@ -2566,13 +2583,13 @@ export default function App() {
                                                    if (selectedInTrash.length > 0) {
                                                       return (
                                                         <div className="flex items-center gap-2">
-                                                          <button onClick={() => handleTrashAction('restore', selectedInTrash)} className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/60 rounded-lg transition-colors text-xs font-bold flex items-center gap-1 shadow-sm" title="Restaurar seleccionados">
+                                                          <button onClick={() => handleTrashAction('restore', selectedInTrash)} className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/60 rounded-lg transition-colors text-xs font-bold flex items-center gap-1 shadow-sm" title={t("restore_selected")}>
                                                             <RotateCcw className="w-4 h-4" />
                                                             Restaurar ({selectedInTrash.length})
                                                           </button>
                                                           <button onClick={() => {
                                                             requireConfirm(`¿Eliminar permanentemente ${selectedInTrash.length} archivo(s)?`, () => handleTrashAction('delete', selectedInTrash));
-                                                          }} className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-500/20 dark:bg-red-900/40 dark:hover:bg-red-900/60 rounded-lg transition-colors text-xs font-bold flex items-center gap-1 shadow-sm" title="Eliminar seleccionados">
+                                                          }} className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-500/20 dark:bg-red-900/40 dark:hover:bg-red-900/60 rounded-lg transition-colors text-xs font-bold flex items-center gap-1 shadow-sm" title={t("delete_selected_short")}>
                                                             <Trash2 className="w-4 h-4" />
                                                             Eliminar ({selectedInTrash.length})
                                                           </button>
@@ -2582,7 +2599,7 @@ export default function App() {
                                                    return (
                                                      <button onClick={() => {
                                                        requireConfirm('¿Vaciar papelera permanentemente?', () => handleTrashAction('delete', focusedContainer.files));
-                                                     }} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs font-bold flex items-center justify-center gap-1 shadow-sm" title="Vaciar papelera">
+                                                     }} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs font-bold flex items-center justify-center gap-1 shadow-sm" title={t("empty_trash_action")}>
                                                        <Trash2 className="w-4 h-4 mr-1" />
                                                        Vaciar Todo
                                                      </button>
@@ -2613,7 +2630,7 @@ export default function App() {
                                                {focusedContainer.files.length === 0 && (
                                                   <div className="col-span-full py-16 flex flex-col items-center justify-center opacity-50">
                                                     <FolderOpen className="w-16 h-16 text-text-secondary mb-4" />
-                                                    <p className="text-sm text-text-secondary font-medium">Contenedor vacío</p>
+                                                    <p className="text-sm text-text-secondary font-medium">{t("empty_container")}</p>
                                                   </div>
                                                )}
                                             </div>
@@ -2671,7 +2688,7 @@ export default function App() {
                             className="flex flex-col rounded-2xl p-5 overflow-hidden transition-all duration-300 min-w-[140px] max-w-[140px] h-[70vh] items-center justify-center border-2 border-dashed border-border-lite text-text-secondary hover:text-indigo-600 hover:border-indigo-400 hover:bg-surface-card bg-surface-base/30"
                           >
                             <Plus className="w-8 h-8 mb-2 opacity-50" />
-                            <span className="font-medium text-sm" style={{ writingMode: 'vertical-rl' }}>Nuevo Contenedor</span>
+                            <span className="font-medium text-sm" style={{ writingMode: 'vertical-rl' }}>{t("add_container")}</span>
                           </button>
                         )}
                       </div>
@@ -2710,7 +2727,7 @@ export default function App() {
       </main>
 
       <footer className="text-center py-4 text-xs text-text-secondary border-t border-border-lite mt-auto bg-surface-card z-10">
-        showme es un software desarrollado por Emilio Sevilla Ortego mediante Google AI Studio
+        {t("developed_by")}
       </footer>
 
     </div>

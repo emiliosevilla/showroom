@@ -11,87 +11,87 @@ export interface ClassificationResult {
 }
 
 const EXTENSION_MAP: Record<string, string> = {
-  'exe': 'Ejecutables y Herramientas',
-  'msi': 'Ejecutables y Herramientas',
-  'bat': 'Ejecutables y Herramientas',
-  'sh': 'Ejecutables y Herramientas',
-  'app': 'Ejecutables y Herramientas',
-  'apk': 'Ejecutables y Herramientas',
-  'bin': 'Ejecutables y Herramientas',
+  'exe': 'cat_executables',
+  'msi': 'cat_executables',
+  'bat': 'cat_executables',
+  'sh': 'cat_executables',
+  'app': 'cat_executables',
+  'apk': 'cat_executables',
+  'bin': 'cat_executables',
 
-  'png': 'Recursos Gráficos',
-  'jpg': 'Recursos Gráficos',
-  'jpeg': 'Recursos Gráficos',
-  'gif': 'Recursos Gráficos',
-  'svg': 'Recursos Gráficos',
-  'webp': 'Recursos Gráficos',
-  'psd': 'Recursos Gráficos',
-  'ai': 'Recursos Gráficos',
-  'ico': 'Recursos Gráficos',
+  'png': 'cat_graphics',
+  'jpg': 'cat_graphics',
+  'jpeg': 'cat_graphics',
+  'gif': 'cat_graphics',
+  'svg': 'cat_graphics',
+  'webp': 'cat_graphics',
+  'psd': 'cat_graphics',
+  'ai': 'cat_graphics',
+  'ico': 'cat_graphics',
 
-  'pdf': 'Documentación',
-  'doc': 'Documentación',
-  'docx': 'Documentación',
-  'txt': 'Documentación',
-  'md': 'Documentación',
-  'xls': 'Documentación',
-  'xlsx': 'Documentación',
-  'csv': 'Documentación',
+  'pdf': 'cat_docs',
+  'doc': 'cat_docs',
+  'docx': 'cat_docs',
+  'txt': 'cat_docs',
+  'md': 'cat_docs',
+  'xls': 'cat_docs',
+  'xlsx': 'cat_docs',
+  'csv': 'cat_docs',
 
-  'zip': 'Archivos Comprimidos',
-  'rar': 'Archivos Comprimidos',
-  '7z': 'Archivos Comprimidos',
-  'tar': 'Archivos Comprimidos',
-  'gz': 'Archivos Comprimidos',
+  'zip': 'cat_compressed',
+  'rar': 'cat_compressed',
+  '7z': 'cat_compressed',
+  'tar': 'cat_compressed',
+  'gz': 'cat_compressed',
 
-  'mp3': 'Multimedia',
-  'mp4': 'Multimedia',
-  'wav': 'Multimedia',
-  'avi': 'Multimedia',
-  'mkv': 'Multimedia',
-  'mov': 'Multimedia',
+  'mp3': 'cat_multimedia',
+  'mp4': 'cat_multimedia',
+  'wav': 'cat_multimedia',
+  'avi': 'cat_multimedia',
+  'mkv': 'cat_multimedia',
+  'mov': 'cat_multimedia',
 
-  'js': 'Proyectos de Código',
-  'ts': 'Proyectos de Código',
-  'html': 'Proyectos de Código',
-  'css': 'Proyectos de Código',
-  'json': 'Proyectos de Código',
-  'py': 'Proyectos de Código',
-  'java': 'Proyectos de Código',
-  'cpp': 'Proyectos de Código',
-  'c': 'Proyectos de Código',
-  'tsx': 'Proyectos de Código',
-  'jsx': 'Proyectos de Código',
+  'js': 'cat_code',
+  'ts': 'cat_code',
+  'html': 'cat_code',
+  'css': 'cat_code',
+  'json': 'cat_code',
+  'py': 'cat_code',
+  'java': 'cat_code',
+  'cpp': 'cat_code',
+  'c': 'cat_code',
+  'tsx': 'cat_code',
+  'jsx': 'cat_code',
 };
 
 export async function classifyFiles(files: FileEntry[]): Promise<ClassificationResult> {
-  // Simulamos un breve retraso para mantener la fluidez de la interfaz
+  // Simulate a slight delay to keep UI fluid
   await new Promise(res => setTimeout(res, 500));
 
   const groups: Record<string, string[]> = {
-    'Subcarpetas': [],
-    'Ejecutables y Herramientas': [],
-    'Recursos Gráficos': [],
-    'Documentación': [],
-    'Archivos Comprimidos': [],
-    'Multimedia': [],
-    'Proyectos de Código': [],
-    'Varios': []
+    'cat_subfolders': [],
+    'cat_executables': [],
+    'cat_graphics': [],
+    'cat_docs': [],
+    'cat_compressed': [],
+    'cat_multimedia': [],
+    'cat_code': [],
+    'cat_misc': []
   };
 
   for (const file of files) {
     if (file.kind === 'directory') {
-      groups['Subcarpetas'].push(file.path);
+      groups['cat_subfolders'].push(file.path);
     } else {
       const ext = file.extension?.toLowerCase() || '';
       if (ext) {
-        const groupName = EXTENSION_MAP[ext] || 'Varios';
+        const groupName = EXTENSION_MAP[ext] || 'cat_misc';
         if (!groups[groupName]) {
           groups[groupName] = [];
         }
         groups[groupName].push(file.path);
       } else {
-        groups['Varios'].push(file.path);
+        groups['cat_misc'].push(file.path);
       }
     }
   }
@@ -106,3 +106,4 @@ export async function classifyFiles(files: FileEntry[]): Promise<ClassificationR
 
   return { containers };
 }
+

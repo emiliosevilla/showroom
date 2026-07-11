@@ -4,17 +4,17 @@ You do not have direct write access to this repo. Every change must come through
 
 ## Initial setup (one time only)
 
-1. **Fork the repo**: go to this repository on GitHub and click "Fork" (top right). A copy will be created under your account: `youruser/showme`.
+1. **Fork the repo**: go to this repository on GitHub and click "Fork" (top right). A copy will be created under your account: `youruser/showroom`.
 
 2. **Clone your fork** (not the original one):
    ```bash
-   git clone https://github.com/youruser/showme.git
-   cd showme
+   git clone https://github.com/youruser/showroom.git
+   cd showroom
    ```
 
 3. **Add the original repo as `upstream`**:
    ```bash
-   git remote add upstream https://github.com/emiliosevilla/showme.git
+   git remote add upstream https://github.com/emiliosevilla/showroom.git
    git remote -v
    ```
    You should see two remotes: `origin` (your fork, where you can write) and `upstream` (the original one, read-only for you).
@@ -38,13 +38,13 @@ git checkout -b feature/descriptive-name upstream/dev
 
 If you are going to have several tasks open at the same time, instead of switching branches and losing the state of what you had set up (`git stash` back and forth), you can use a **worktree**: a separate folder with its own branch, but sharing the same `.git` history:
 ```bash
-git worktree add ../showme-feature-x -b feature/descriptive-name upstream/dev
+git worktree add ../showroom-feature-x -b feature/descriptive-name upstream/dev
 ```
-This way `showme/` stays on `dev` and `showme-feature-x/` has the working branch, both open at the same time without interfering with each other.
+This way `showroom/` stays on `dev` and `showroom-feature-x/` has the working branch, both open at the same time without interfering with each other.
 
 When you finish that task and want to free up the folder:
 ```bash
-git worktree remove ../showme-feature-x
+git worktree remove ../showroom-feature-x
 ```
 
 ## Pushing changes and opening the Pull Request
@@ -56,8 +56,8 @@ git push origin feature/descriptive-name
 ```
 
 On GitHub, go to your fork and click "Compare & pull request". Verify that:
-- **base repository**: `emiliosevilla/showme`, **base**: `dev`
-- **head repository**: `youruser/showme`, **compare**: `feature/descriptive-name`
+- **base repository**: `emiliosevilla/showroom`, **base**: `dev`
+- **head repository**: `youruser/showroom`, **compare**: `feature/descriptive-name`
 
 Briefly describe what the change does and why.
 
@@ -75,11 +75,11 @@ Briefly describe what the change does and why.
 
 | I want to... | Command |
 |---|---|
-| Configure the original remote (once) | `git remote add upstream https://github.com/emiliosevilla/showme.git` |
+| Configure the original remote (once) | `git remote add upstream https://github.com/emiliosevilla/showroom.git` |
 | Update my `dev` with the latest | `git fetch upstream && git checkout dev && git merge upstream/dev && git push origin dev` |
 | Start a new task | `git checkout -b feature/x upstream/dev` |
-| Start a new task in a separate folder (worktree) | `git worktree add ../showme-feature-x -b feature/x upstream/dev` |
+| Start a new task in a separate folder (worktree) | `git worktree add ../showroom-feature-x -b feature/x upstream/dev` |
 | Push my changes to my fork | `git push origin feature/x` |
-| Open the PR | On GitHub: fork → "Compare & pull request" (base: `emiliosevilla/showme`/`dev`) |
+| Open the PR | On GitHub: fork → "Compare & pull request" (base: `emiliosevilla/showroom`/`dev`) |
 | Update an already open PR | New commits on the same branch + `git push origin feature/x` |
-| Remove an already used worktree | `git worktree remove ../showme-feature-x` |
+| Remove an already used worktree | `git worktree remove ../showroom-feature-x` |
