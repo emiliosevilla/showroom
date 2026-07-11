@@ -2107,7 +2107,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="font-bold text-text-primary flex items-baseline gap-2">
-              <span className="text-[27px]">mostrador</span>
+              <span className="text-[27px]">showme</span>
               <span className="text-[13.5px] text-text-secondary font-normal">v1</span>
             </h1>
           </div>
@@ -2710,7 +2710,7 @@ export default function App() {
       </main>
 
       <footer className="text-center py-4 text-xs text-text-secondary border-t border-border-lite mt-auto bg-surface-card z-10">
-        mostrador es un software desarrollado por Emilio Sevilla Ortego mediante Google AI Studio
+        showme es un software desarrollado por Emilio Sevilla Ortego mediante Google AI Studio
       </footer>
 
     </div>

@@ -8,17 +8,17 @@ exclusivamente @emiliosevilla.
 ## Configuración inicial (una sola vez)
 
 1. **Fork del repo**: entra a este repositorio en GitHub y pulsa "Fork" (arriba a la
-   derecha). Se crea una copia bajo tu cuenta: `tuusuario/mostrador`.
+   derecha). Se crea una copia bajo tu cuenta: `tuusuario/showme`.
 
 2. **Clona tu fork** (no el original):
    ```bash
-   git clone https://github.com/tuusuario/mostrador.git
-   cd mostrador
+   git clone https://github.com/tuusuario/showme.git
+   cd showme
    ```
 
 3. **Añade el repo original como `upstream`**:
    ```bash
-   git remote add upstream https://github.com/emiliosevilla/mostrador.git
+   git remote add upstream https://github.com/emiliosevilla/showme.git
    git remote -v
    ```
    Deberías ver dos remotos: `origin` (tu fork, donde puedes escribir) y `upstream`
@@ -46,14 +46,14 @@ estado de lo que tenías montado (`git stash` de un lado a otro), puedes usar un
 **worktree**: una carpeta aparte con su propia rama, pero compartiendo el mismo
 histórico `.git`:
 ```bash
-git worktree add ../mostrador-feature-x -b feature/nombre-descriptivo upstream/dev
+git worktree add ../showme-feature-x -b feature/nombre-descriptivo upstream/dev
 ```
-Así `mostrador/` se queda en `dev` y `mostrador-feature-x/` tiene la rama de trabajo,
+Así `showme/` se queda en `dev` y `showme-feature-x/` tiene la rama de trabajo,
 ambas abiertas a la vez sin interferirse.
 
 Cuando termines esa tarea y quieras liberar la carpeta:
 ```bash
-git worktree remove ../mostrador-feature-x
+git worktree remove ../showme-feature-x
 ```
 
 ## Subir cambios y abrir el Pull Request
@@ -65,8 +65,8 @@ git push origin feature/nombre-descriptivo
 ```
 
 En GitHub, ve a tu fork y pulsa "Compare & pull request". Comprueba que:
-- **base repository**: `emiliosevilla/mostrador`, **base**: `dev`
-- **head repository**: `tuusuario/mostrador`, **compare**: `feature/nombre-descriptivo`
+- **base repository**: `emiliosevilla/showme`, **base**: `dev`
+- **head repository**: `tuusuario/showme`, **compare**: `feature/nombre-descriptivo`
 
 Describe brevemente qué hace el cambio y por qué.
 
@@ -88,11 +88,11 @@ promoción posterior a `prod` no requiere ninguna acción por tu parte.
 
 | Quiero... | Comando |
 |---|---|
-| Configurar el remoto original (una vez) | `git remote add upstream https://github.com/emiliosevilla/mostrador.git` |
+| Configurar el remoto original (una vez) | `git remote add upstream https://github.com/emiliosevilla/showme.git` |
 | Actualizar mi `dev` con lo último | `git fetch upstream && git checkout dev && git merge upstream/dev && git push origin dev` |
 | Empezar una tarea nueva | `git checkout -b feature/x upstream/dev` |
-| Empezar una tarea nueva en carpeta aparte (worktree) | `git worktree add ../mostrador-feature-x -b feature/x upstream/dev` |
+| Empezar una tarea nueva en carpeta aparte (worktree) | `git worktree add ../showme-feature-x -b feature/x upstream/dev` |
 | Subir mis cambios a mi fork | `git push origin feature/x` |
-| Abrir el PR | En GitHub: fork → "Compare & pull request" (base: `emiliosevilla/mostrador`/`dev`) |
+| Abrir el PR | En GitHub: fork → "Compare & pull request" (base: `emiliosevilla/showme`/`dev`) |
 | Actualizar un PR ya abierto | Nuevos commits en la misma rama + `git push origin feature/x` |
-| Quitar un worktree ya usado | `git worktree remove ../mostrador-feature-x` |
+| Quitar un worktree ya usado | `git worktree remove ../showme-feature-x` |

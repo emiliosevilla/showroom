@@ -1,6 +1,6 @@
-# mostrador
+# showme
 
-Local folder organizer that runs 100% in the browser. `mostrador` scans a folder on your computer, automatically classifies its files into categories ("containers") and lets you reorganize them with drag & drop before applying the changes back to the disk, exporting them to a ZIP, or generating a self-contained HTML gallery for sharing.
+Local folder organizer that runs 100% in the browser. `showme` scans a folder on your computer, automatically classifies its files into categories ("containers") and lets you reorganize them with drag & drop before applying the changes back to the disk, exporting them to a ZIP, or generating a self-contained HTML gallery for sharing.
 
 There is no backend or AI: all processing happens on the client and no file leaves your computer unless you explicitly export it.
 
