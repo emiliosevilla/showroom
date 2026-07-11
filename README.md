@@ -1,82 +1,58 @@
 # mostrador
 
-Organizador de carpetas locales que se ejecuta 100% en el navegador. `mostrador`
-escanea una carpeta de tu equipo, clasifica sus archivos automáticamente en
-categorías ("contenedores") y te deja reorganizarlos con drag & drop antes de
-aplicar los cambios de vuelta al disco, exportarlos a un ZIP o generar una
-galería HTML autocontenida para compartir.
+Local folder organizer that runs 100% in the browser. `mostrador` scans a folder on your computer, automatically classifies its files into categories ("containers") and lets you reorganize them with drag & drop before applying the changes back to the disk, exporting them to a ZIP, or generating a self-contained HTML gallery for sharing.
 
-No hay backend ni IA: todo el procesamiento ocurre en el cliente y ningún
-archivo sale de tu equipo salvo que tú lo exportes explícitamente.
+There is no backend or AI: all processing happens on the client and no file leaves your computer unless you explicitly export it.
 
-## Cómo funciona
+## How it works
 
-1. **Seleccionas una carpeta local** mediante la File System Access API del
-   navegador (`showDirectoryPicker`), con un `<input webkitdirectory>` como
-   alternativa en navegadores sin soporte.
-2. **La app escanea la carpeta** de forma recursiva (`scanDirectory`) y
-   clasifica cada archivo por extensión en categorías predefinidas —
-   Ejecutables y Herramientas, Recursos Gráficos, Documentación, Archivos
-   Comprimidos, Multimedia, Proyectos de Código, Subcarpetas y Varios
-   (`src/services/classifier.ts`).
-3. **Editas el resultado**: arrastra archivos entre contenedores, renombra o
-   cambia el color/icono de cada contenedor, marca favoritos, busca y filtra,
-   ordena en vista de lista (nombre, contenedor, extensión, fecha) y deshaces
-   o rehaces cambios (Ctrl+Z / Ctrl+Shift+Z).
-4. **Decides qué hacer con el resultado**:
-   - **Aplicar al disco**: escribe la nueva organización directamente en la
-     carpeta original, con permisos de lectura/escritura y renombrado seguro
-     ante colisiones (`applyChangesToDisk`).
-   - **Exportar ZIP**: descarga un `.zip` con una carpeta por contenedor
-     (vía JSZip).
-   - **Exportar como HTML**: genera una galería HTML autocontenida y
-     portable (sin dependencias externas en tiempo de ejecución, con modo
-     claro/oscuro) que muestra los contenedores y sus archivos — pensada
-     para compartir o consultar sin necesidad de la app.
+1. **You select a local folder** using the browser's File System Access API (`showDirectoryPicker`), with a `<input webkitdirectory>` fallback for browsers without support.
+2. **The app scans the folder** recursively (`scanDirectory`) and classifies each file by extension into predefined categories — Executables and Tools, Graphic Resources, Documentation, Compressed Files, Multimedia, Code Projects, Subfolders, and Miscellaneous (`src/services/classifier.ts`).
+3. **You edit the result**: drag files between containers, rename or change the color/icon of each container, mark favorites, search and filter, sort in list view (name, container, extension, date), and undo or redo changes (Ctrl+Z / Ctrl+Shift+Z).
+4. **You decide what to do with the result**:
+   - **Apply to disk**: writes the new organization directly to the original folder, with read/write permissions and safe renaming against collisions (`applyChangesToDisk`).
+   - **Export ZIP**: downloads a `.zip` with a folder per container (via JSZip).
+   - **Export as HTML**: generates a self-contained and portable HTML gallery (with no external runtime dependencies, featuring light/dark mode) displaying the containers and their files — designed for sharing or consulting without needing the app.
 
-## Características
+## Features
 
-- Clasificación automática de archivos por extensión.
-- Vistas en cuadrícula, columnas y lista.
-- Reordenación por drag & drop de archivos y contenedores (`@dnd-kit`).
-- Edición de contenedores: nombre, color e icono.
-- Papelera con eliminar/restaurar antes de aplicar cambios.
-- Favoritos persistidos en `localStorage`.
-- Estadísticas de la carpeta en un gráfico circular (`recharts`).
-- Deshacer / rehacer.
-- Modo oscuro / claro.
-- Compartir mediante la Web Share API del navegador.
-- Exportación a ZIP o a HTML estático autocontenido.
-- Persistencia ligera de estado en IndexedDB (`src/utils/idb.ts`).
+- Automatic file classification by extension.
+- Grid, columns, and list views.
+- Drag & drop reordering for files and containers (`@dnd-kit`).
+- Container editing: name, color, and icon.
+- Trash bin with delete/restore before applying changes.
+- Favorites persisted in `localStorage`.
+- Folder statistics in a pie chart (`recharts`).
+- Undo / redo.
+- Dark / light mode.
+- Sharing via the browser's Web Share API.
+- Export to ZIP or self-contained static HTML.
+- Lightweight state persistence in IndexedDB (`src/utils/idb.ts`).
 
-## Ejecutar en local
+## Run locally
 
-**Requisitos:** Node.js
+**Requirements:** Node.js
 
 ```bash
 npm install
 npm run dev
 ```
 
-Otros scripts disponibles:
+Other available scripts:
 
 ```bash
-npm run build   # build de producción (Vite)
-npm run preview # sirve el build de producción
-npm run lint    # comprueba tipos con tsc --noEmit
-npm run clean   # borra dist/
+npm run build   # production build (Vite)
+npm run preview # serves the production build
+npm run lint    # type checking with tsc --noEmit
+npm run clean   # deletes dist/
 ```
 
-No hace falta configurar ninguna variable de entorno ni API key para usar la
-app: todo el procesamiento es local en el navegador.
+There is no need to configure any environment variables or API keys to use the app: all processing is local in the browser.
 
-## Stack técnico
+## Technical stack
 
-Vite 6 + React 19 + TypeScript (`strict` habilitado), Tailwind CSS v4,
-`@dnd-kit` para drag & drop, `recharts` para estadísticas, `lucide-react`
-para iconos, `motion` para animaciones y `jszip` para la exportación en ZIP.
+Vite 6 + React 19 + TypeScript (`strict` enabled), Tailwind CSS v4, `@dnd-kit` for drag & drop, `recharts` for statistics, `lucide-react` for icons, `motion` for animations, and `jszip` for ZIP export.
 
-## Contribuir
+## Contributing
 
-Este repositorio se gestiona mediante forks y Pull Requests. Consulta
-[CONTRIBUTING.md](CONTRIBUTING.md) para el flujo completo.
+This repository is managed through forks and Pull Requests. Check out [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.

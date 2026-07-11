@@ -1,32 +1,27 @@
-# Cómo colaborar en este repositorio
+# How to contribute to this repository
 
-No tienes acceso de escritura directo a este repo. Todo cambio entra a través de un
-Pull Request desde tu propio fork, y la decisión de qué se integra y cuándo es de
-@emiliosevilla. Las ramas `pre` y `prod` son de despliegue y las gestiona
-exclusivamente @emiliosevilla.
+You do not have direct write access to this repo. Every change must come through a Pull Request from your own fork, and the decision of what and when to merge is up to @emiliosevilla. The `prod` branch is for deployment and is managed exclusively by @emiliosevilla.
 
-## Configuración inicial (una sola vez)
+## Initial setup (one time only)
 
-1. **Fork del repo**: entra a este repositorio en GitHub y pulsa "Fork" (arriba a la
-   derecha). Se crea una copia bajo tu cuenta: `tuusuario/mostrador`.
+1. **Fork the repo**: go to this repository on GitHub and click "Fork" (top right). A copy will be created under your account: `youruser/mostrador`.
 
-2. **Clona tu fork** (no el original):
+2. **Clone your fork** (not the original one):
    ```bash
-   git clone https://github.com/tuusuario/mostrador.git
+   git clone https://github.com/youruser/mostrador.git
    cd mostrador
    ```
 
-3. **Añade el repo original como `upstream`**:
+3. **Add the original repo as `upstream`**:
    ```bash
    git remote add upstream https://github.com/emiliosevilla/mostrador.git
    git remote -v
    ```
-   Deberías ver dos remotos: `origin` (tu fork, donde puedes escribir) y `upstream`
-   (el original, de solo lectura para ti).
+   You should see two remotes: `origin` (your fork, where you can write) and `upstream` (the original one, read-only for you).
 
-## Antes de empezar cualquier tarea
+## Before starting any task
 
-Actualiza tu copia de `dev` con lo último del original:
+Update your local `dev` branch with the latest from the original:
 ```bash
 git fetch upstream
 git checkout dev
@@ -34,65 +29,57 @@ git merge upstream/dev
 git push origin dev
 ```
 
-## Trabajar en una tarea
+## Working on a task
 
-Nunca trabajes directamente sobre `dev`. Crea una rama por cada funcionalidad o fix:
+Never work directly on `dev`. Create a branch for each feature or fix:
 ```bash
-git checkout -b feature/nombre-descriptivo upstream/dev
+git checkout -b feature/descriptive-name upstream/dev
 ```
 
-Si vas a tener varias tareas abiertas a la vez, en vez de cambiar de rama y perder el
-estado de lo que tenías montado (`git stash` de un lado a otro), puedes usar un
-**worktree**: una carpeta aparte con su propia rama, pero compartiendo el mismo
-histórico `.git`:
+If you are going to have several tasks open at the same time, instead of switching branches and losing the state of what you had set up (`git stash` back and forth), you can use a **worktree**: a separate folder with its own branch, but sharing the same `.git` history:
 ```bash
-git worktree add ../mostrador-feature-x -b feature/nombre-descriptivo upstream/dev
+git worktree add ../mostrador-feature-x -b feature/descriptive-name upstream/dev
 ```
-Así `mostrador/` se queda en `dev` y `mostrador-feature-x/` tiene la rama de trabajo,
-ambas abiertas a la vez sin interferirse.
+This way `mostrador/` stays on `dev` and `mostrador-feature-x/` has the working branch, both open at the same time without interfering with each other.
 
-Cuando termines esa tarea y quieras liberar la carpeta:
+When you finish that task and want to free up the folder:
 ```bash
 git worktree remove ../mostrador-feature-x
 ```
 
-## Subir cambios y abrir el Pull Request
+## Pushing changes and opening the Pull Request
 
 ```bash
 git add .
-git commit -m "mensaje descriptivo"
-git push origin feature/nombre-descriptivo
+git commit -m "descriptive message"
+git push origin feature/descriptive-name
 ```
 
-En GitHub, ve a tu fork y pulsa "Compare & pull request". Comprueba que:
+On GitHub, go to your fork and click "Compare & pull request". Verify that:
 - **base repository**: `emiliosevilla/mostrador`, **base**: `dev`
-- **head repository**: `tuusuario/mostrador`, **compare**: `feature/nombre-descriptivo`
+- **head repository**: `youruser/mostrador`, **compare**: `feature/descriptive-name`
 
-Describe brevemente qué hace el cambio y por qué.
+Briefly describe what the change does and why.
 
-## Revisión e integración
+## Review and integration
 
-@emiliosevilla revisa el PR, puede pedir cambios (añádelos con más commits en la
-misma rama; el PR se actualiza solo) y decide cuándo y cómo se integra en `dev`. La
-promoción posterior a `pre` y `prod` no requiere ninguna acción por tu parte.
+@emiliosevilla reviews the PR, may request changes (add them with more commits to the same branch; the PR updates automatically), and decides when and how it is integrated into `dev`. Subsequent promotion to `prod` does not require any action from you.
 
-## Reglas rápidas
+## Quick rules
 
-- No hay push directo a `dev`, `pre` ni `prod` (de hecho, no podrás: no tienes
-  permiso de escritura sobre el repo original).
-- Un PR = una funcionalidad o fix, lo más acotado posible.
-- Ante dudas sobre si algo encaja en el proyecto, pregunta antes de invertir tiempo
-  en ello.
+- No direct push to `dev` or `prod` (in fact, you won't be able to: you don't have write permissions to the original repo).
+- One PR = one feature or fix, as scoped as possible.
+- When in doubt about whether something fits the project, ask before investing time in it.
 
 ## Cheatsheet
 
-| Quiero... | Comando |
+| I want to... | Command |
 |---|---|
-| Configurar el remoto original (una vez) | `git remote add upstream https://github.com/emiliosevilla/mostrador.git` |
-| Actualizar mi `dev` con lo último | `git fetch upstream && git checkout dev && git merge upstream/dev && git push origin dev` |
-| Empezar una tarea nueva | `git checkout -b feature/x upstream/dev` |
-| Empezar una tarea nueva en carpeta aparte (worktree) | `git worktree add ../mostrador-feature-x -b feature/x upstream/dev` |
-| Subir mis cambios a mi fork | `git push origin feature/x` |
-| Abrir el PR | En GitHub: fork → "Compare & pull request" (base: `emiliosevilla/mostrador`/`dev`) |
-| Actualizar un PR ya abierto | Nuevos commits en la misma rama + `git push origin feature/x` |
-| Quitar un worktree ya usado | `git worktree remove ../mostrador-feature-x` |
+| Configure the original remote (once) | `git remote add upstream https://github.com/emiliosevilla/mostrador.git` |
+| Update my `dev` with the latest | `git fetch upstream && git checkout dev && git merge upstream/dev && git push origin dev` |
+| Start a new task | `git checkout -b feature/x upstream/dev` |
+| Start a new task in a separate folder (worktree) | `git worktree add ../mostrador-feature-x -b feature/x upstream/dev` |
+| Push my changes to my fork | `git push origin feature/x` |
+| Open the PR | On GitHub: fork → "Compare & pull request" (base: `emiliosevilla/mostrador`/`dev`) |
+| Update an already open PR | New commits on the same branch + `git push origin feature/x` |
+| Remove an already used worktree | `git worktree remove ../mostrador-feature-x` |
