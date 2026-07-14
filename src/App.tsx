@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from './i18n/LanguageContext';
-import { scanDirectory, FileEntry, processFileList, applyChangesToDisk } from './utils/fileSystem';
+import { scanDirectory, FileEntry, processFileList } from './utils/fileSystem';
 import { setKey, getKey } from './utils/idb';
 import { classifyFiles, ClassificationResult } from './services/classifier';
 import { generateEnhancedHtmlString, getImagePreview } from './exportHtml';
@@ -131,7 +131,7 @@ const ContainerSettingsModal = ({
             <label className="text-sm font-bold text-text-secondary flex items-center gap-2"><Type className="w-4 h-4"/> Nombre del Contenedor</label>
             <input
               type="text"
-              aria-label="Nombre del Contenedor"
+              aria-label={t("container_name")}
               className="w-full bg-surface-base border border-border-lite rounded-lg px-3 py-2 text-text-primary focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
               value={name}
               onChange={(e) => {
@@ -147,7 +147,7 @@ const ContainerSettingsModal = ({
               <button 
                 onClick={() => setColor(undefined)}
                 className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-transform ${!color ? 'border-indigo-500 scale-110' : 'border-transparent hover:scale-110'}`}
-                title="Por defecto"
+                title={t("default")}
               >
                 <div className="w-full h-full rounded-full bg-surface-pill border border-border-lite flex items-center justify-center">
                   <X className="w-4 h-4 text-text-secondary" />
@@ -295,7 +295,7 @@ const FilePreviewModal = ({ fileEntry, name, onClose }: { fileEntry?: FileEntry,
                 <span className="text-xs font-mono w-10 text-center select-none">{Math.round(scale * 100)}%</span>
                 <button onClick={zoomIn} aria-label="Acercar" className="p-1.5 hover:bg-surface-base rounded-md text-text-secondary hover:text-text-primary"><ZoomIn className="w-4 h-4" /></button>
                 <div className="w-px h-4 bg-border-mute mx-1"></div>
-                <button onClick={resetZoom} aria-label="Restablecer zoom" className="p-1.5 hover:bg-surface-base rounded-md text-text-secondary hover:text-text-primary"><Maximize className="w-4 h-4" /></button>
+                <button onClick={resetZoom} aria-label={t("reset_zoom")} className="p-1.5 hover:bg-surface-base rounded-md text-text-secondary hover:text-text-primary"><Maximize className="w-4 h-4" /></button>
               </div>
               <div className="overflow-auto w-full h-full flex items-center justify-center custom-scrollbar">
                 <img src={previewUrl} alt={name} style={{ transform: `scale(${scale})`, transition: 'transform 0.2s ease-out', transformOrigin: 'center' }} className="object-contain max-h-[70vh] rounded-lg" />
@@ -446,8 +446,8 @@ const FileItem = ({
             <button
               className={`p-1.5 rounded-md transition-colors flex-shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${isFavorite ? 'text-amber-500 hover:bg-amber-50/10' : 'text-text-secondary hover:text-amber-500 hover:bg-surface-base'}`}
               onClick={toggleFavorite}
-              title={isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
-              aria-label={isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
+              title={isFavorite ? t("remove_favorite") : t("add_favorite")}
+              aria-label={isFavorite ? t("remove_favorite") : t("add_favorite")}
             >
               <Star className="w-4 h-4" fill={isFavorite ? "currentColor" : "none"} />
             </button>
@@ -702,17 +702,17 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
                 onClick={toggleSelection} 
                 className="flex items-center text-text-secondary hover:text-indigo-600 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded px-1 -ml-1"
                 title={t("select_all")}
-                aria-label={isAllSelected ? "Deseleccionar todos" : "Seleccionar todos"}
+                aria-label={isAllSelected ? t("deselect_all") : t("select_all")}
               >
                 {isAllSelected ? <CheckSquare className="w-4 h-4 mr-1" /> : <Square className="w-4 h-4 mr-1" />}
                 Todo
               </button>
               {containerSelectedFiles.length > 0 ? (
                 <div className="flex items-center gap-2">
-                  <button onClick={handleRestoreSelected} className="flex items-center text-emerald-600 hover:text-emerald-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1" title={t("restore_selected")} aria-label="Restaurar seleccionados">
+                  <button onClick={handleRestoreSelected} className="flex items-center text-emerald-600 hover:text-emerald-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1" title={t("restore_selected")} aria-label={t("restore_selected")}>
                     <RotateCcw className="w-4 h-4" />
                   </button>
-                  <button onClick={handleDeleteSelected} className="flex items-center text-red-600 hover:text-red-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-1" title={t("delete_selected")} aria-label="Eliminar permanentemente los seleccionados">
+                  <button onClick={handleDeleteSelected} className="flex items-center text-red-600 hover:text-red-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-1" title={t("delete_selected")} aria-label={t("delete_selected")}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -726,7 +726,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
                     }
                   }} 
                   className="flex items-center justify-center flex-1 ml-2 bg-red-500 text-white hover:bg-red-600 font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-2"
-                  aria-label="Vaciar papelera"
+                  aria-label={t("empty_trash_action")}
                 >
                   <Trash2 className="w-4 h-4 mr-1.5" />
                   Vaciar Todo
@@ -741,7 +741,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
                   onClick={toggleSelection} 
                   className="flex items-center text-xs text-text-secondary hover:text-indigo-600 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded px-1 -ml-1"
                   title={t("select_all")}
-                  aria-label={isAllSelected ? "Deseleccionar todos" : "Seleccionar todos"}
+                  aria-label={isAllSelected ? t("deselect_all") : t("select_all")}
                 >
                   {isAllSelected ? <CheckSquare className="w-3.5 h-3.5 mr-1" /> : <Square className="w-3.5 h-3.5 mr-1" />}
                   Todo
@@ -753,7 +753,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
                     onClick={() => onCustomizeContainer(id)}
                     className="flex items-center text-xs hover:text-indigo-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded p-1"
                     title={t("configure")}
-                    aria-label="Configurar contenedor"
+                    aria-label={t("configure")}
                   >
                     <Settings className="w-4 h-4 mr-1" />
                     Color/Icono
@@ -764,7 +764,7 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
                     onClick={() => onSort(id)}
                     className="flex items-center text-xs hover:text-indigo-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded p-1"
                     title={t("sort_alpha")}
-                    aria-label="Ordenar alfabéticamente"
+                    aria-label={t("sort_alpha")}
                   >
                     <ArrowDownAZ className="w-4 h-4 mr-1" />
                     Ordenar
@@ -773,12 +773,12 @@ const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, sca
                 {id.startsWith('custom-') && typeof onDeleteContainer === 'function' && files.length === 0 && (
                    <button 
                     onClick={() => {
-                      doConfirm(`¿Estás seguro de que deseas eliminar el contenedor "${name}"?`, () => {
+                      doConfirm(`${t('delete_container_q')} \"${name}\"?`, () => {
                         if (onDeleteContainer) onDeleteContainer(id, files);
                       });
                     }}
                     className="flex items-center text-xs hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-1"
-                    title="Eliminar este contenedor"
+                    title={t("delete_this_container")}
                     aria-label={`Eliminar contenedor ${name}`}
                   >
                     <Trash2 className="w-4 h-4 mr-1" />
@@ -1050,11 +1050,8 @@ export default function App() {
   const [trashOriginalLocations, setTrashOriginalLocations] = useState<Record<string, string>>({}); // 'all', 'executable', 'directory', 'image', 'document'
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
-  const [isSavingToDisk, setIsSavingToDisk] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [isEnvironmentReal, setIsEnvironmentReal] = useState(false);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const intervalRef = useRef<any>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [favoritesTick, setFavoritesTick] = useState(0);
 
   const [editingFocusedContainerId, setEditingFocusedContainerId] = useState<string | null>(null);
@@ -1344,7 +1341,21 @@ export default function App() {
       setDirHandle(handle);
       setFolderName(session.folderName);
       
-      const filesDesc = await scanDirectory(handle);
+      abortControllerRef.current = new AbortController();
+      let filesDesc: FileEntry[] = [];
+      try {
+        filesDesc = await scanDirectory(handle, '', abortControllerRef.current.signal);
+      } catch (e: any) {
+        if (e.message === 'LIMIT_EXCEEDED') {
+          setErrorMsg(t('limit_exceeded_error'));
+        } else if (e.message === 'AbortError') {
+          setErrorMsg(t('scan_aborted'));
+        } else {
+          setErrorMsg(t('scan_error'));
+        }
+        setStep('input');
+        return;
+      }
       setScannedFiles(filesDesc);
       
       // Smart sync: find out what was added and deleted on disk since last session
@@ -1416,7 +1427,21 @@ export default function App() {
       setStep('scanning');
 
       // Scan directory
-      const filesDesc = await scanDirectory(handle);
+      abortControllerRef.current = new AbortController();
+      let filesDesc: FileEntry[] = [];
+      try {
+        filesDesc = await scanDirectory(handle, '', abortControllerRef.current.signal);
+      } catch (e: any) {
+        if (e.message === 'LIMIT_EXCEEDED') {
+          setErrorMsg(t('limit_exceeded_error'));
+        } else if (e.message === 'AbortError') {
+          setErrorMsg(t('scan_aborted'));
+        } else {
+          setErrorMsg(t('scan_error'));
+        }
+        setStep('input');
+        return;
+      }
       setScannedFiles(filesDesc);
       
       if (filesDesc.length === 0) {
@@ -1584,7 +1609,7 @@ export default function App() {
     commitClassificationChange(prev => {
       if (!prev) return prev;
       const newId = `custom-${Date.now()}`;
-      const newContainer = { id: newId, name: 'Nuevo Contenedor', files: [] };
+      const newContainer = { id: newId, name: t('new_container_name'), files: [] };
       const newContainers = [...prev.containers];
       // Insert before trash if exists
       const trashIdx = newContainers.findIndex(c => c.id === 'trash');
@@ -1798,7 +1823,7 @@ export default function App() {
         await writable.write(htmlStr);
         await writable.close();
         
-        alert(`✅ "Vista_Mejorada_${folderName}.html" se ha guardado exitosamente\ndentro de tu carpeta "${folderName}".\n\n¡Ve allí y haz doble clic en el archivo para abrir tu nueva interfaz!`);
+        alert(t('export_success_long').replace('{0}', folderName).replace('{1}', folderName));
         return; // Salir si tuvo éxito
       }
     } catch (e) {
@@ -1861,72 +1886,6 @@ export default function App() {
     }
   };
 
-  const startApplyingToDisk = async () => {
-    if (!classification || !dirHandle) {
-      alert("No se pudo aplicar los cambios porque no se seleccionó mediante selector de carpetas compatible.");
-      return;
-    }
-
-    try {
-      if ((await dirHandle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
-        const permission = await dirHandle.requestPermission({ mode: 'readwrite' });
-        if (permission !== 'granted') {
-          alert("Se requieren permisos de escritura para aplicar los cambios.");
-          return;
-        }
-      }
-    } catch (e: any) {
-      alert("Error al solicitar permisos: " + e.message);
-      return;
-    }
-
-    setCountdown(10);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      setCountdown(prev => {
-        if (prev !== null && prev <= 1) {
-          clearInterval(intervalRef.current);
-          handleApplyToDisk();
-          return null;
-        }
-        return prev !== null ? prev - 1 : null;
-      });
-    }, 1000);
-  };
-
-  const abortCountdown = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    setCountdown(null);
-  };
-
-  const handleApplyToDisk = async () => {
-    const allCurrentFiles = new Set(classification!.containers.flatMap(c => c.files));
-    const permanentlyDeletedFiles = scannedFiles.filter(f => f.kind === 'file' && !allCurrentFiles.has(f.path));
-
-    const executeApply = async () => {
-      setIsSavingToDisk(true);
-      try {
-        const count = await applyChangesToDisk(dirHandle!, classification!, scannedFiles);
-        alert(`✅ ¡Éxito! Tu carpeta ha sido organizada correctamente y los cambios se han aplicado (${count} archivos procesados).`);
-        setIsDirty(false);
-        setIsEnvironmentReal(true);
-        setTimeout(() => {
-          setIsEnvironmentReal(false);
-        }, 2000);
-      } catch (error: any) {
-        alert(`❌ Error al guardar en disco: ${error.message || t('unknown')}`);
-        console.error(error);
-      } finally {
-        setIsSavingToDisk(false);
-      }
-    };
-
-    if (permanentlyDeletedFiles.length > 0) {
-      requireConfirm(t("confirm_empty_trash"), executeApply);
-    } else {
-      executeApply();
-    }
-  };
 
   // Find the active file path for Overlay
   const activeFile = activeId ? activeId : '';
@@ -2076,38 +2035,6 @@ export default function App() {
         </div>
       )}
 
-      {countdown !== null && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="bg-surface-base border border-border-mute p-8 rounded-2xl shadow-2xl max-w-md w-full text-center flex flex-col items-center animate-in zoom-in-95 duration-200">
-            <div className="w-24 h-24 mb-6 flex items-center justify-center rounded-full bg-red-500/10 text-red-600 dark:text-red-500 border-4 border-red-500/30 text-5xl font-black shadow-inner">
-              {countdown}
-            </div>
-            <h2 className="text-2xl font-bold text-text-primary mb-3">{t("are_you_sure")}</h2>
-            <p className="text-text-secondary mb-8 text-sm">
-              Estás a punto de realizar <strong>{t("real_changes")}</strong> en tu ordenador. Se confeccionarán las nuevas carpetas organizadas y se copiarán tus archivos en ellas.
-            </p>
-            <button 
-              onClick={abortCountdown}
-              className="w-full px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors shadow-lg hover:shadow-red-500/25 active:scale-95"
-            >
-              ABORTAR Y VOLVER AL ENTORNO VIRTUAL
-            </button>
-          </div>
-        </div>
-      )}
-
-      {(step === 'editor' && (isDirty || isEnvironmentReal)) && (
-        <div 
-          className={`fixed inset-0 z-40 pointer-events-none border-[6px] md:border-[10px] transition-colors duration-500 ease-in-out ${isEnvironmentReal ? 'border-red-500/50' : 'border-emerald-500/40'}`}
-        >
-          <div className={`absolute top-0 left-1/2 -translate-x-1/2 bg-surface-base px-4 py-0.5 rounded-b-lg border-x-2 border-b-2 font-bold text-[8px] md:text-[10px] shadow-sm tracking-wide flex items-start gap-2 transition-colors duration-500 ${isEnvironmentReal ? 'border-red-500/50 text-red-600 dark:text-red-400' : 'border-emerald-500/40 text-emerald-700 dark:text-emerald-400'}`}>
-             {isEnvironmentReal ? 
-               '{t("real_environment")}' : 
-               '{t("virtual_environment")}'
-             }
-          </div>
-        </div>
-      )}
 
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border-lite bg-surface-card px-8 pt-6 pb-4 shadow-sm z-10 shrink-0 transition-colors duration-200">
@@ -2127,7 +2054,7 @@ export default function App() {
           <button 
             onClick={toggleLanguage} 
             className="p-2.5 rounded-xl hover:bg-surface-pill transition-colors text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-lg"
-            title={language === 'es' ? 'Switch to English' : 'Cambiar a Español'}
+            title={language === 'es' ? t('switch_en') : t('switch_es')}
           >
             {language === 'es' ? '🇪🇸' : '🇬🇧'}
           </button>
@@ -2180,18 +2107,8 @@ export default function App() {
                 className="flex items-center space-x-2 rounded-lg bg-indigo-600 text-white border border-indigo-700 px-4 py-2 text-sm font-bold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {isExportingZip ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                <span className="hidden sm:inline">{isExportingZip ? 'Exportando...' : 'Exportar Zip'}</span>
+                <span className="hidden sm:inline">{isExportingZip ? t('exporting') : t('export_zip_btn')}</span>
               </button>
-              {dirHandle && (
-                <button 
-                  onClick={startApplyingToDisk}
-                  disabled={isSavingToDisk}
-                  className="flex items-center space-x-2 rounded-lg bg-red-600 text-white px-6 py-2 border border-red-700 text-sm font-bold shadow-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {isSavingToDisk ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderOpen className="w-4 h-4" />}
-                  <span className="hidden sm:inline">{isSavingToDisk ? 'Guardando...' : 'Convertir en Realidad'}</span>
-                </button>
-              )}
             </>
           )}
         </div>
@@ -2219,7 +2136,7 @@ export default function App() {
                   <div className="text-center bg-indigo-500/10 border border-indigo-500/20 p-6 rounded-2xl w-full">
                     <h3 className="text-xl font-bold text-text-primary mb-2">{t("new_tab_req")}</h3>
                     <p className="text-text-secondary mb-6 text-sm">
-                      Para acceder a tus carpetas locales necesitamos usar herramientas avanzadas del navegador. Abre la aplicación en una pestaña nueva para habilitarlas. <br/><br/><strong>Tranquilidad:</strong> el proceso es 100% local. Ni los nombres ni el contenido de tus archivos se suben a internet ni se comparten con nadie.
+                      <span dangerouslySetInnerHTML={{ __html: t("open_new_tab_msg") }} />
                     </p>
                     <a 
                       href={window.location.href} 
@@ -2289,20 +2206,28 @@ export default function App() {
           {(step === 'scanning' || step === 'classifying') && (
             <motion.div 
               key="loading"
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               className="text-center"
             >
               <Loader2 className="w-12 h-12 animate-spin text-indigo-500 mx-auto mb-6" />
               <h2 className="text-2xl font-bold tracking-tight text-text-primary">
-                {step === 'scanning' ? 'Analizando archivos...' : 'Clasificando archivos...'}
+                {step === 'scanning' ? t('analyzing_files') : t('classifying_files')}
               </h2>
-              <p className="text-text-secondary mt-2">
+              <p className="text-text-secondary mt-2 mb-6">
                 {step === 'scanning' 
-                  ? 'Recorriendo los niveles de tu carpeta...' 
-                  : 'El motor local está categorizando cada elemento de forma 100% privada.'}
+                  ? t('scanning_levels') 
+                  : t('categorizing_private')}
               </p>
+              {step === 'scanning' && (
+                <button 
+                  onClick={() => abortControllerRef.current?.abort()} 
+                  className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                >
+                  Cancelar escaneo
+                </button>
+              )}
             </motion.div>
           )}
 
@@ -2319,9 +2244,9 @@ export default function App() {
                   <span className="text-text-secondary text-sm font-medium">{t("files_organized_in")} {classification.containers.length} {t("containers_drag_drop")}</span>
                   {viewMode !== 'list' && (
                     <div className="ml-4 flex items-center gap-1">
-                      <button onClick={expandAll} className="px-2 py-1 text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label="Desplegar todos los contenedores">{t("expand_all")}</button>
+                      <button onClick={expandAll} className="px-2 py-1 text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label={t("expand_all_containers")}>{t("expand_all")}</button>
                       <span className="text-border-heavy">|</span>
-                      <button onClick={collapseAll} className="px-2 py-1 text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label="Plegar todos los contenedores">{t("collapse_all")}</button>
+                      <button onClick={collapseAll} className="px-2 py-1 text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label={t("collapse_all_containers")}>{t("collapse_all")}</button>
                     </div>
                   )}
                 </div>
@@ -2332,7 +2257,7 @@ export default function App() {
                       onClick={() => setViewMode('grid')}
                       className={`p-1.5 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${viewMode === 'grid' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'text-text-secondary hover:text-text-primary'}`}
                       title={t("main_view")}
-                      aria-label="Vista principal"
+                      aria-label={t("main_view")}
                     >
                       <LayoutGrid className="w-4 h-4" />
                     </button>
@@ -2340,7 +2265,7 @@ export default function App() {
                       onClick={() => setViewMode('list')}
                       className={`p-1.5 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${viewMode === 'list' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'text-text-secondary hover:text-text-primary'}`}
                       title={t("list_view")}
-                      aria-label="Vista de lista"
+                      aria-label={t("list_view")}
                     >
                       <List className="w-4 h-4" />
                     </button>
@@ -2545,7 +2470,7 @@ export default function App() {
                                                         setEditingFocusedContainerId(focusedContainer.id);
                                                       }
                                                     }}
-                                                    title={focusedContainer.id !== 'trash' ? "Click para renombrar" : focusedContainer.name}
+                                                    title={focusedContainer.id !== 'trash' ? t("click_to_rename") : focusedContainer.name}
                                                   >
                                                     {focusedContainer.name}
                                                   </span>

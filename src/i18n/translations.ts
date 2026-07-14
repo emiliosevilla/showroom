@@ -200,6 +200,13 @@ export const translations = {
     error_sharing: "Error sharing:",
     error_saving_session: "Error saving session:",
     no_saved_sessions: "No saved sessions",
+    limit_exceeded_error: "Límites superados: Se han encontrado más de 100 subcarpetas o más de 1000 archivos. Por favor, selecciona una carpeta más pequeña.",
+    scan_aborted: "Escaneo cancelado.",
+    scan_error: "Error al escanear la carpeta.",
+    cancel_scan: "Cancelar escaneo",
+    new_container_name: "Nuevo Contenedor",
+    open_new_tab_msg: "Para acceder a tus carpetas locales necesitamos usar herramientas avanzadas del navegador. Abre la aplicación en una pestaña nueva para habilitarlas. <br/><br/><strong>Tranquilidad:</strong> el proceso es 100% local. Ni los nombres ni el contenido de tus archivos se suben a internet ni se comparten con nadie.",
+    export_success_long: "✅ \"Vista_Mejorada_{0}.html\" se ha guardado exitosamente\ndentro de tu carpeta \"{1}\".\n\n¡Ve allí y haz doble clic en el archivo para abrir tu nueva interfaz!"
   },
   en: {
     // Categories
@@ -402,6 +409,13 @@ export const translations = {
     error_sharing: "Error sharing:",
     error_saving_session: "Error saving session:",
     no_saved_sessions: "No saved sessions",
+    limit_exceeded_error: "Limits exceeded: More than 100 subfolders or 1000 files found. Please select a smaller folder.",
+    scan_aborted: "Scan aborted.",
+    scan_error: "Error scanning folder.",
+    cancel_scan: "Cancel scan",
+    new_container_name: "New Container",
+    open_new_tab_msg: "To access your local folders we need to use advanced browser tools. Open the application in a new tab to enable them. <br/><br/><strong>Peace of mind:</strong> the process is 100% local. Neither the names nor the content of your files are uploaded to the internet or shared with anyone.",
+    export_success_long: "✅ \"Improved_View_{0}.html\" has been successfully saved\ninside your folder \"{1}\".\n\nGo there and double click the file to open your new interface!"
   }
 };
 
