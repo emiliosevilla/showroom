@@ -1,6 +1,6 @@
 # showroom
 
-Local folder organizer that runs 100% in the browser. `showroom` scans a folder on your computer, automatically classifies its files into categories ("containers") and lets you reorganize them with drag & drop before applying the changes back to the disk, exporting them to a ZIP, or generating a self-contained HTML gallery for sharing.
+Local folder organizer that runs 100% in the browser. `showroom` scans a folder on your computer, automatically classifies its files into categories ("containers") and lets you reorganize them with drag & drop before exporting them to a ZIP, or generating a self-contained HTML gallery for sharing.
 
 There is no backend or AI: all processing happens on the client and no file leaves your computer unless you explicitly export it.
 
@@ -10,7 +10,6 @@ There is no backend or AI: all processing happens on the client and no file leav
 2. **The app scans the folder** recursively (`scanDirectory`) and classifies each file by extension into predefined categories — Executables and Tools, Graphic Resources, Documentation, Compressed Files, Multimedia, Code Projects, Subfolders, and Miscellaneous (`src/services/classifier.ts`).
 3. **You edit the result**: drag files between containers, rename or change the color/icon of each container, mark favorites, search and filter, sort in list view (name, container, extension, date), and undo or redo changes (Ctrl+Z / Ctrl+Shift+Z).
 4. **You decide what to do with the result**:
-   - **Apply to disk**: writes the new organization directly to the original folder, with read/write permissions and safe renaming against collisions (`applyChangesToDisk`).
    - **Export ZIP**: downloads a `.zip` with a folder per container (via JSZip).
    - **Export as HTML**: generates a self-contained and portable HTML gallery (with no external runtime dependencies, featuring light/dark mode) displaying the containers and their files — designed for sharing or consulting without needing the app.
 
@@ -20,7 +19,7 @@ There is no backend or AI: all processing happens on the client and no file leav
 - Grid, columns, and list views.
 - Drag & drop reordering for files and containers (`@dnd-kit`).
 - Container editing: name, color, and icon.
-- Trash bin with delete/restore before applying changes.
+- Trash bin with delete/restore.
 - Favorites persisted in `localStorage`.
 - Folder statistics in a pie chart (`recharts`).
 - Undo / redo.
@@ -28,6 +27,8 @@ There is no backend or AI: all processing happens on the client and no file leav
 - Sharing via the browser's Web Share API.
 - Export to ZIP or self-contained static HTML.
 - Lightweight state persistence in IndexedDB (`src/utils/idb.ts`).
+- Multi-language support (i18n).
+- Scan limits to prevent memory overload (max 100 subfolders and 1000 files per subfolder).
 
 ## Run locally
 
