@@ -12,14 +12,15 @@
   - `[x]` Añadir nuevas claves a los diccionarios en `src/i18n/`.
   - `[x]` Reemplazar textos estáticos por `t('clave')`.
 
-- `[ ]` **Fase 3: Refactorización Arquitectónica de App.tsx**
-  - `[ ]` Crear `/src/components/FileItem.tsx` y migrar código.
-  - `[ ]` Crear `/src/components/ContainerColumn.tsx` y migrar código.
-  - `[ ]` Crear `/src/components/Modals/` (`FilePreviewModal.tsx`, `ContainerSettingsModal.tsx`).
-  - `[ ]` Crear `/src/hooks/useDragAndDrop.ts` para lógica de `@dnd-kit`.
-  - `[ ]` Crear `/src/hooks/useFileSystem.ts` para lógica de escaneo y estado de archivos.
-  - `[ ]` Limpiar y ensamblar `App.tsx` usando los nuevos componentes y hooks.
+- `[x]` **Fase 3: Refactorización Arquitectónica de App.tsx (Completado)**
+  - `[x]` Crear `/src/components/FileItem.tsx` y migrar código.
+  - `[x]` Crear `/src/components/ContainerColumn.tsx` y migrar código.
+  - `[x]` Crear `/src/components/Modals/` (`FilePreviewModal.tsx`, `ContainerSettingsModal.tsx`).
+  - `[x]` Crear `/src/hooks/useDragAndDrop.ts` para lógica de `@dnd-kit`.
+  - `[x]` Crear `/src/hooks/useFileSystem.ts` para lógica de escaneo y estado de archivos.
+  - `[x]` Limpiar y ensamblar `App.tsx` usando los nuevos componentes y hooks (`App.tsx`: 1353 líneas; objetivo original ~800).
 
 - `[ ]` **Fase 4: Verificación**
-  - `[ ]` Comprobar que los límites de escaneo se respetan y no saturan la memoria.
-  - `[ ]` Verificar que la organización de Drag & Drop y la UI sigue funcionando como antes.
+  - `[x]` Puerta automatizada: `npm run build` y `npm run lint` pasan en rama `feat-finish-pending` (2026-08-11).
+  - `[ ]` Comprobar manualmente que los límites de escaneo se respetan y no saturan la memoria.
+  - `[ ]` Verificar manualmente que la organización de Drag & Drop y la UI sigue funcionando como antes.

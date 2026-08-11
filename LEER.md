@@ -3,8 +3,7 @@
 Organizador de carpetas locales que se ejecuta 100% en el navegador. `showroom`
 escanea una carpeta de tu equipo, clasifica sus archivos automáticamente en
 categorías ("contenedores") y te deja reorganizarlos con drag & drop antes de
-aplicar los cambios de vuelta al disco, exportarlos a un ZIP o generar una
-galería HTML autocontenida para compartir.
+exportarlos a un ZIP o generar una galería HTML autocontenida para compartir.
 
 No hay backend ni IA: todo el procesamiento ocurre en el cliente y ningún
 archivo sale de tu equipo salvo que tú lo exportes explícitamente.
@@ -24,9 +23,6 @@ archivo sale de tu equipo salvo que tú lo exportes explícitamente.
    ordena en vista de lista (nombre, contenedor, extensión, fecha) y deshaces
    o rehaces cambios (Ctrl+Z / Ctrl+Shift+Z).
 4. **Decides qué hacer con el resultado**:
-   - **Aplicar al disco**: escribe la nueva organización directamente en la
-     carpeta original, con permisos de lectura/escritura y renombrado seguro
-     ante colisiones (`applyChangesToDisk`).
    - **Exportar ZIP**: descarga un `.zip` con una carpeta por contenedor
      (vía JSZip).
    - **Exportar como HTML**: genera una galería HTML autocontenida y
@@ -40,7 +36,7 @@ archivo sale de tu equipo salvo que tú lo exportes explícitamente.
 - Vistas en cuadrícula, columnas y lista.
 - Reordenación por drag & drop de archivos y contenedores (`@dnd-kit`).
 - Edición de contenedores: nombre, color e icono.
-- Papelera con eliminar/restaurar antes de aplicar cambios.
+- Papelera con eliminar/restaurar.
 - Favoritos persistidos en `localStorage`.
 - Estadísticas de la carpeta en un gráfico circular (`recharts`).
 - Deshacer / rehacer.
@@ -48,6 +44,8 @@ archivo sale de tu equipo salvo que tú lo exportes explícitamente.
 - Compartir mediante la Web Share API del navegador.
 - Exportación a ZIP o a HTML estático autocontenido.
 - Persistencia ligera de estado en IndexedDB (`src/utils/idb.ts`).
+- Soporte multi-idioma (i18n).
+- Límites de escaneo para proteger la memoria (máx. 100 subcarpetas y 1000 archivos por subcarpeta).
 
 ## Ejecutar en local
 
