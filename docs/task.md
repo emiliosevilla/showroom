@@ -21,6 +21,14 @@
   - `[x]` Limpiar y ensamblar `App.tsx` usando los nuevos componentes y hooks (`App.tsx`: 1353 líneas; objetivo original ~800).
 
 - `[ ]` **Fase 4: Verificación**
-  - `[x]` Puerta automatizada: `npm run build` y `npm run lint` pasan en rama `feat-finish-pending` (2026-08-11).
+  - `[x]` Puerta automatizada: `npm run build` y `npm run lint` pasan (también tras QA fixes en `dev`, 2026-08-12).
+  - `[x]` QA manual local (Chrome/Edge): DnD, Cambiar carpeta, sesiones, modal de apariencia (fixes en `7d81e63`).
   - `[ ]` Comprobar manualmente que los límites de escaneo se respetan y no saturan la memoria.
-  - `[ ]` Verificar manualmente que la organización de Drag & Drop y la UI sigue funcionando como antes.
+  - `[ ]` Smoke de la build empaquetada (cuando exista el ejecutable).
+
+- `[ ]` **Fase 5: Distribución como ejecutable (aplazado — otro día)**
+  - `[ ]` Elegir stack de empaquetado (p. ej. Electron, Tauri u otra opción).
+  - `[ ]` Configurar build de escritorio a partir del frontend Vite/React.
+  - `[ ]` Generar instalable/ejecutable para macOS (y otras plataformas si aplica).
+  - `[ ]` Smoke del ejecutable (abrir app, seleccionar carpeta, DnD básico, export).
+  - Nota: **no** es una app web desplegada; `prod` en git es la rama de release del código, no un hosting Vercel/URL pública.
