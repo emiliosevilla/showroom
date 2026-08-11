@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from './i18n/LanguageContext';
-import { scanDirectory, FileEntry, processFileList } from './utils/fileSystem';
+import { useFileSystem } from './hooks/useFileSystem';
 import { setKey, getKey } from './utils/idb';
 import { classifyFiles, ClassificationResult } from './services/classifier';
 import { generateEnhancedHtmlString, getImagePreview } from './exportHtml';
@@ -56,13 +56,8 @@ import { ListViewTable } from './components/ListViewTable';
 
 export default function App() {
   const { t, language, toggleLanguage } = useLanguage();
-  const [step, setStep] = useState<'input' | 'scanning' | 'classifying' | 'editor'>('input');
   const [viewMode, setViewMode] = useState<'grid' | 'columns' | 'list'>('grid');
-  const [folderName, setFolderName] = useState('');
-  const [dirHandle, setDirHandle] = useState<any>(null);
   const [classification, setClassification] = useState<ClassificationResult | null>(null);
-  const [scannedFiles, setScannedFiles] = useState<FileEntry[]>([]);
-  const [errorMsg, setErrorMsg] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -72,10 +67,8 @@ export default function App() {
   const [focusedContainerId, setFocusedContainerId] = useState<string | null>(null);
   const [customizeContainerId, setCustomizeContainerId] = useState<string | null>(null);
   const [trashOriginalLocations, setTrashOriginalLocations] = useState<Record<string, string>>({}); // 'all', 'executable', 'directory', 'image', 'document'
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [isDirty, setIsDirty] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const [favoritesTick, setFavoritesTick] = useState(0);
 
   const [editingFocusedContainerId, setEditingFocusedContainerId] = useState<string | null>(null);
@@ -92,6 +85,27 @@ export default function App() {
     }
   }, [recentAction]);
   const [savedSessions, setSavedSessions] = useState<any[]>([]);
+  const {
+    step,
+    folderName,
+    dirHandle,
+    scannedFiles,
+    setScannedFiles,
+    errorMsg,
+    fileInputRef,
+    abortControllerRef,
+    handleSelectFolder,
+    handleFallbackSelectFolder,
+    handleResumeSession,
+  } = useFileSystem({
+    t,
+    classifyFiles,
+    setClassification,
+    setExpandedContainers,
+    setIsDirty,
+    savedSessions,
+    setSavedSessions,
+  });
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean; message: string; onConfirm: () => void;}>({ isOpen: false, message: '', onConfirm: () => {} });
 
   const requireConfirm = (message: string, onConfirm: () => void) => {
@@ -317,188 +331,6 @@ export default function App() {
   }, [isDarkMode]);
 
   const toggleDarkMode = () => setIsDarkMode(prev => !prev);
-
-  const handleFallbackSelectFolder = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    
-    setStep('scanning');
-    
-    try {
-      const { entries, rootName } = processFileList(e.target.files);
-      setFolderName(rootName);
-      setDirHandle(null);
-      setScannedFiles(entries);
-      
-      if (entries.length === 0) {
-        setErrorMsg(t('folder_empty'));
-        setStep('input');
-        return;
-      }
-      
-      const cappedFiles = entries.slice(0, 2000);
-      setStep('classifying');
-      const result = await classifyFiles(cappedFiles);
-      if (!result.containers.find((c: any) => c.id === 'trash')) {
-        result.containers.push({ id: 'trash', name: t('trash'), files: [] });
-      }
-      setClassification(result);
-      setExpandedContainers(new Set());
-      setStep('editor');
-      setIsDirty(true);
-    } catch (err: any) {
-       console.error(err);
-       setErrorMsg(t('error_processing'));
-       setStep('input');
-    }
-  };
-
-  const handleResumeSession = async (session: any) => {
-    try {
-      setStep('scanning');
-      const handle = session.dirHandle;
-      if ((await handle.queryPermission({ mode: 'read' })) !== 'granted') {
-        const permission = await handle.requestPermission({ mode: 'read' });
-        if (permission !== 'granted') {
-          throw new Error(t('permissions_denied'));
-        }
-      }
-      setDirHandle(handle);
-      setFolderName(session.folderName);
-      
-      abortControllerRef.current = new AbortController();
-      let filesDesc: FileEntry[] = [];
-      try {
-        filesDesc = await scanDirectory(handle, '', abortControllerRef.current.signal);
-      } catch (e: any) {
-        if (e.message === 'LIMIT_EXCEEDED') {
-          setErrorMsg(t('limit_exceeded_error'));
-        } else if (e.message === 'AbortError') {
-          setErrorMsg(t('scan_aborted'));
-        } else {
-          setErrorMsg(t('scan_error'));
-        }
-        setStep('input');
-        return;
-      }
-      setScannedFiles(filesDesc);
-      
-      // Smart sync: find out what was added and deleted on disk since last session
-      const currentPaths = new Set(filesDesc.map(f => f.path));
-      const savedPaths = new Set<string>();
-      
-      session.classification.containers.forEach((c: any) => {
-        c.files.forEach((f: string) => savedPaths.add(f));
-      });
-
-      const newFiles = filesDesc.filter(f => !savedPaths.has(f.path));
-      
-      let updatedContainers = session.classification.containers.map((c: any) => ({
-        ...c,
-        files: c.files.filter((f: string) => currentPaths.has(f)) // remove deleted files
-      }));
-
-      // Classify only new files and merge them
-      if (newFiles.length > 0) {
-        const newClassification = await classifyFiles(newFiles);
-        newClassification.containers.forEach((nc: any) => {
-          if (nc.files.length === 0) return;
-          const existRegex = new RegExp(`^${nc.name}$`, 'i');
-          const existing = updatedContainers.find((c: any) => existRegex.test(c.name));
-          if (existing) {
-            existing.files.push(...nc.files);
-          } else {
-            updatedContainers.push({
-              ...nc,
-              id: `merged-${Date.now()}-${nc.id}`
-            });
-          }
-        });
-      }
-
-      setClassification({
-        ...session.classification,
-        containers: updatedContainers
-      });
-      
-      setExpandedContainers(new Set());
-      setStep('editor');
-      setIsDirty(true);
-    } catch (e) {
-      console.error(e);
-      setErrorMsg(`No se pudo restaurar la sesión para "${session.folderName}". Verifica permisos o que la carpeta siga existiendo.`);
-      setStep('input');
-      
-      // Removed failed session from list
-      const updatedSessions = savedSessions.filter(s => s.folderName !== session.folderName);
-      setSavedSessions(updatedSessions);
-      setKey('smartfolder_sessions', updatedSessions);
-    }
-  };
-
-  const handleSelectFolder = async () => {
-    setErrorMsg('');
-
-    if (!('showDirectoryPicker' in window)) {
-      fileInputRef.current?.click();
-      return;
-    }
-
-    try {
-      // Prompt user to select directory
-      const handle = await (window as any).showDirectoryPicker({ mode: 'read' });
-      setDirHandle(handle);
-      setFolderName(handle.name);
-      setStep('scanning');
-
-      // Scan directory
-      abortControllerRef.current = new AbortController();
-      let filesDesc: FileEntry[] = [];
-      try {
-        filesDesc = await scanDirectory(handle, '', abortControllerRef.current.signal);
-      } catch (e: any) {
-        if (e.message === 'LIMIT_EXCEEDED') {
-          setErrorMsg(t('limit_exceeded_error'));
-        } else if (e.message === 'AbortError') {
-          setErrorMsg(t('scan_aborted'));
-        } else {
-          setErrorMsg(t('scan_error'));
-        }
-        setStep('input');
-        return;
-      }
-      setScannedFiles(filesDesc);
-      
-      if (filesDesc.length === 0) {
-        setErrorMsg(t('folder_empty'));
-        setStep('input');
-        return;
-      }
-      
-      // Ahora que es totalmente local, procesar 2000 elementos no es problema
-      const cappedFiles = filesDesc.slice(0, 2000);
-
-      setStep('classifying');
-      
-      // Classify locally
-      const result = await classifyFiles(cappedFiles);
-      if (!result.containers.find((c: any) => c.id === 'trash')) {
-        result.containers.push({ id: 'trash', name: t('trash'), files: [] });
-      }
-      setClassification(result);
-      setExpandedContainers(new Set());
-      setStep('editor');
-      setIsDirty(true);
-    } catch (err: any) {
-      console.error(err);
-      if (err.name === 'AbortError') {
-        // User cancelled, do nothing
-        setStep('input');
-      } else {
-        setErrorMsg(t('error_accessing_folder'));
-        setStep('input');
-      }
-    }
-  };
 
   const handleUpdateContainer = (id: string, updates: { name?: string, color?: string, icon?: string }) => {
     commitClassificationChange(prev => {
