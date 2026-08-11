@@ -1,11 +1,12 @@
 # Phase 3: Refactorización Arquitectónica de App.tsx
 
-El archivo `App.tsx` actualmente tiene más de 2700 líneas y contiene múltiples componentes, lógica de estado compleja y constantes mezcladas. El objetivo de esta fase es dividir este monolito en una estructura modular y escalable.
+**Estado:** Completado (rama `feat-finish-pending`, HEAD `414eeb2`).
 
-## Open Questions
+`App.tsx` pasó de un monolito de ~2700 líneas a **1353 líneas** tras extraer componentes y hooks (`useFileSystem`, `useDragAndDrop`). El objetivo original era ~800 líneas de lógica de ensamblado; el recuento actual refleja el estado real del archivo.
 
-> [!WARNING] 
-> **Diseño de los Modales**: ¿Quieres que mantenga los modales actuales basados en `div` fijos o prefieres que los actualice para usar el elemento nativo `<dialog>` de HTML5 según recomienda el comando `/modern-web-guidance`? (Recomiendo usar `<dialog>`).
+## Decisiones cerradas
+
+> **Modales con `<dialog>` nativo** — Decidido e implementado. `FilePreviewModal.tsx` y `ContainerSettingsModal.tsx` usan el elemento HTML5 `<dialog>` en lugar de `div` fijos.
 
 ## Proposed Changes
 
@@ -22,7 +23,7 @@ Extraeremos la lógica de colores, iconos y renderizado para no saturar los comp
 ---
 
 ### Components / Modals
-Extraeremos los modales independientes. Adaptaremos su estructura para usar el elemento `<dialog>` nativo si se aprueba.
+Modales extraídos e implementados con `<dialog>` nativo.
 
 #### [NEW] src/components/Modals/ContainerSettingsModal.tsx
 - Contendrá el componente `ContainerSettingsModal` y su estado interno.
@@ -56,17 +57,18 @@ Componentes clave de la interfaz.
 El contenedor principal quedará limpio de componentes auxiliares.
 
 #### [MODIFY] src/App.tsx
-- Importará todos los componentes anteriores.
-- Mantendrá el contexto principal (estado global `classification`, eventos Dnd-kit `handleDragStart`, `handleDragOver`, `handleDragEnd`).
-- Pasará de ~2700 líneas a unas ~800 líneas de lógica de negocio pura.
+- Importa todos los componentes y hooks anteriores.
+- Mantiene el ensamblado principal (estado global `classification`, orquestación DnD vía `useDragAndDrop`, escaneo vía `useFileSystem`).
+- Resultado actual: **1353 líneas** (objetivo original ~800; reducción significativa respecto al monolito inicial).
 
 ## Verification Plan
 
 ### Automated Tests
-- Ejecutar `npm run build` para comprobar que todas las dependencias e importaciones de TypeScript son correctas.
-- Ejecutar `npm run lint` para garantizar que no haya variables no utilizadas tras la separación.
+- `[x]` `npm run build` — pasa en rama `feat-finish-pending` (2026-08-11).
+- `[x]` `npm run lint` — pasa en rama `feat-finish-pending` (2026-08-11).
 
-### Manual Verification
-- Comprobar que Drag and Drop sigue funcionando.
-- Comprobar que la previsualización de archivos abre los modales correctamente.
-- Verificar que no haya pérdidas de estado de React al organizar los contenedores.
+### Manual Verification (pendiente)
+- `[ ]` Comprobar que Drag and Drop sigue funcionando.
+- `[ ]` Comprobar que la previsualización de archivos abre los modales `<dialog>` correctamente.
+- `[ ]` Verificar que no haya pérdidas de estado de React al organizar los contenedores.
+- `[ ]` Comprobar que los límites de escaneo se respetan y no saturan la memoria.

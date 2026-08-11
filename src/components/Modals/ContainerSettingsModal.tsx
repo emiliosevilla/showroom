@@ -64,7 +64,7 @@ export const ContainerSettingsModal = ({
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
           <Settings className="w-5 h-5" />
-          {t("container_appearance") || "Apariencia del Contenedor"}
+          {t("container_settings") || "Apariencia del Contenedor"}
         </h3>
         <button onClick={handleClose} aria-label="Cerrar" className="p-1 rounded-md text-text-secondary hover:bg-surface-pill transition-colors">
           <X className="w-5 h-5" />
