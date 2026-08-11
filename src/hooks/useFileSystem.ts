@@ -221,12 +221,12 @@ export function useFileSystem({
       setIsDirty(true);
     } catch (err: any) {
       console.error(err);
-      if (err.name === 'AbortError') {
-        setStep('input');
-      } else {
-        setErrorMsg(t('error_accessing_folder'));
-        setStep('input');
+      if (err?.name === 'AbortError') {
+        // User cancelled the picker — stay on the current step (e.g. editor).
+        return;
       }
+      setErrorMsg(t('error_accessing_folder'));
+      setStep('input');
     }
   };
 

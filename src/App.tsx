@@ -61,9 +61,18 @@ export default function App() {
   const [editingFocusedContainerId, setEditingFocusedContainerId] = useState<string | null>(null);
   const [focusedContainerEditName, setFocusedContainerEditName] = useState('');
   const focusedInputRef = useRef<HTMLInputElement>(null);
-  const [history, setHistory] = useState<ClassificationResult[]>([]);
-  const [future, setFuture] = useState<ClassificationResult[]>([]);
+  type EditorSnapshot = {
+    classification: ClassificationResult;
+    trashOriginalLocations: Record<string, string>;
+  };
+  const [history, setHistory] = useState<EditorSnapshot[]>([]);
+  const [future, setFuture] = useState<EditorSnapshot[]>([]);
+  const trashLocRef = useRef<Record<string, string>>({});
   const [recentAction, setRecentAction] = useState<{ message: string, timestamp: number, type?: 'undo' | 'normal' } | null>(null);
+
+  useEffect(() => {
+    trashLocRef.current = trashOriginalLocations;
+  }, [trashOriginalLocations]);
 
   useEffect(() => {
     if (recentAction) {
@@ -115,21 +124,29 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (step === 'editor' && classification && dirHandle && folderName) {
-      getKey('smartfolder_sessions').then((sessions: any) => {
+    if (step !== 'editor' || !classification || !dirHandle || !folderName) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const sessions = await getKey<any>('smartfolder_sessions');
         let currentSessions = Array.isArray(sessions) ? sessions : [];
-        // Remove existing session for the same folder
         currentSessions = currentSessions.filter((s: any) => s.folderName !== folderName);
-        
+
         const newSession = { folderName, dirHandle, classification, timestamp: Date.now() };
         currentSessions.unshift(newSession);
-        // Keep only top 5 recent sessions
         currentSessions = currentSessions.slice(0, 5);
-        
-        setKey('smartfolder_sessions', currentSessions).catch(err => console.error(t('error_saving_session'), err));
-        setSavedSessions(currentSessions);
-      });
-    }
+
+        await setKey('smartfolder_sessions', currentSessions);
+        if (!cancelled) setSavedSessions(currentSessions);
+      } catch (err) {
+        console.error(t('error_saving_session'), err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [step, classification, dirHandle, folderName]);
 
   const commitClassificationChange = (
@@ -139,7 +156,10 @@ export default function App() {
     setClassification(prev => {
       const nextState = typeof updater === 'function' ? updater(prev) : updater;
       if (prev && nextState && JSON.stringify(prev) !== JSON.stringify(nextState)) {
-        setHistory(h => [...h, prev].slice(-30));
+        setHistory(h => [...h, {
+          classification: prev,
+          trashOriginalLocations: { ...trashLocRef.current },
+        }].slice(-30));
         setFuture([]);
         setIsDirty(true);
         if (actionDesc) {
@@ -170,25 +190,37 @@ export default function App() {
 
   const handleUndo = React.useCallback(() => {
     if (history.length === 0) return;
-    const previousState = history[history.length - 1];
+    const previousSnapshot = history[history.length - 1];
     setHistory(h => h.slice(0, -1));
     setClassification(current => {
-      if (current) setFuture(f => [current, ...f]);
-      return previousState;
+      if (current) {
+        setFuture(f => [{
+          classification: current,
+          trashOriginalLocations: { ...trashLocRef.current },
+        }, ...f]);
+      }
+      return previousSnapshot.classification;
     });
+    setTrashOriginalLocations(previousSnapshot.trashOriginalLocations);
     setRecentAction({ message: t('action_undone'), timestamp: Date.now(), type: 'undo' });
-  }, [history]);
+  }, [history, t]);
 
   const handleRedo = React.useCallback(() => {
     if (future.length === 0) return;
-    const nextState = future[0];
+    const nextSnapshot = future[0];
     setFuture(f => f.slice(1));
     setClassification(current => {
-      if (current) setHistory(h => [...h, current].slice(-30));
-      return nextState;
+      if (current) {
+        setHistory(h => [...h, {
+          classification: current,
+          trashOriginalLocations: { ...trashLocRef.current },
+        }].slice(-30));
+      }
+      return nextSnapshot.classification;
     });
+    setTrashOriginalLocations(nextSnapshot.trashOriginalLocations);
     setRecentAction({ message: t('action_redone'), timestamp: Date.now(), type: 'normal' });
-  }, [future]);
+  }, [future, t]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -442,6 +474,17 @@ export default function App() {
     
     if (action === 'delete') {
        setScannedFiles(prev => prev.filter(f => !filesToProcess.includes(f.path)));
+       setTrashOriginalLocations(prev => {
+         const next = { ...prev };
+         filesToProcess.forEach(f => delete next[f]);
+         return next;
+       });
+    } else if (action === 'restore') {
+       setTrashOriginalLocations(prev => {
+         const next = { ...prev };
+         filesToProcess.forEach(f => delete next[f]);
+         return next;
+       });
     }
   };
 
@@ -779,9 +822,9 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="flex items-center rounded-md bg-surface-pill pl-4 pr-2 py-1.5 border border-border-lite hidden md:flex">
-                <span className="mr-2 text-xs font-mono text-text-secondary">{t("folder_label")}</span>
-                <span className="text-sm font-medium text-text-primary truncate max-w-[150px] mr-3">{folderName}</span>
+              <div className="flex items-center rounded-md bg-surface-pill pl-4 pr-2 py-1.5 border border-border-lite">
+                <span className="mr-2 text-xs font-mono text-text-secondary hidden sm:inline">{t("folder_label")}</span>
+                <span className="text-sm font-medium text-text-primary truncate max-w-[120px] sm:max-w-[150px] mr-3">{folderName}</span>
                 <button onClick={handleSelectFolder} className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold px-2 py-1.5 rounded bg-surface-card border border-border-lite hover:bg-surface-base transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                   {t("change_btn")}
                 </button>
@@ -882,15 +925,6 @@ export default function App() {
                   </div>
                 )}
                 {errorMsg && <p className="text-red-500 text-sm mt-3 flex items-center justify-center gap-1"><ArrowRight className="w-4 h-4"/> {errorMsg}</p>}
-                
-                <input 
-                  type="file" 
-                  {...{ webkitdirectory: "", directory: "" }}
-                  multiple 
-                  className="hidden" 
-                  ref={fileInputRef}
-                  onChange={handleFallbackSelectFolder}
-                />
               </div>
             </motion.div>
           )}
@@ -1181,6 +1215,17 @@ export default function App() {
                                                   </button>
                                                 )}
                                                 {focusedContainer.id !== 'trash' && (
+                                                  <button
+                                                    onClick={() => setCustomizeContainerId(focusedContainer.id)}
+                                                    className="p-2 bg-black/5 dark:bg-white/5 rounded-lg hover:bg-black/10 transition-colors flex items-center gap-1"
+                                                    title={t("configure")}
+                                                    aria-label={t("configure")}
+                                                  >
+                                                    <Settings className="w-4 h-4 text-text-secondary" />
+                                                    <span className="text-xs font-semibold text-text-secondary hidden sm:inline">{t("configure")}</span>
+                                                  </button>
+                                                )}
+                                                {focusedContainer.id !== 'trash' && (
                                                   <button onClick={() => {
                                                     setFocusedContainerEditName(focusedContainer.name);
                                                     setEditingFocusedContainerId(focusedContainer.id);
@@ -1347,6 +1392,14 @@ export default function App() {
         {t("developed_by")}
       </footer>
 
+      <input
+        type="file"
+        {...{ webkitdirectory: "", directory: "" }}
+        multiple
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleFallbackSelectFolder}
+      />
     </div>
   );
 }

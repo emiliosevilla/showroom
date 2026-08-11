@@ -24,7 +24,6 @@ export const ContainerSettingsModal = ({
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
-    // Show modal automatically on mount
     dialogRef.current?.showModal();
   }, []);
 
@@ -40,7 +39,6 @@ export const ContainerSettingsModal = ({
       return;
     }
     
-    // Check for invalid characters (allow alphanumeric, spaces, dashes, underscores)
     if (!/^[a-zA-Z0-9_\-\s]+$/.test(trimmed)) {
       setError(t("name_invalid") || "Contiene caracteres inválidos");
       return;
@@ -59,19 +57,19 @@ export const ContainerSettingsModal = ({
     <dialog
       ref={dialogRef}
       onCancel={handleClose}
-      className="bg-surface-card border border-border-lite p-6 rounded-xl shadow-2xl max-w-lg w-full flex flex-col max-h-[90vh] backdrop:bg-black/50 backdrop:backdrop-blur-sm m-auto animate-in zoom-in-95 duration-200"
+      className="fixed inset-0 m-auto max-h-[min(90vh,40rem)] w-[min(32rem,calc(100vw-2rem))] border border-border-lite bg-surface-card p-0 rounded-xl shadow-2xl text-text-primary open:flex open:flex-col backdrop:bg-black/50 backdrop:backdrop-blur-sm animate-in zoom-in-95 duration-200"
     >
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
-          <Settings className="w-5 h-5" />
-          {t("container_settings") || "Apariencia del Contenedor"}
+      <div className="flex shrink-0 justify-between items-center gap-3 px-6 pt-6 pb-4">
+        <h3 className="text-xl font-bold text-text-primary flex items-center gap-2 min-w-0">
+          <Settings className="w-5 h-5 shrink-0" />
+          <span className="truncate">{t("container_settings") || "Apariencia del Contenedor"}</span>
         </h3>
-        <button onClick={handleClose} aria-label="Cerrar" className="p-1 rounded-md text-text-secondary hover:bg-surface-pill transition-colors">
+        <button onClick={handleClose} aria-label="Cerrar" className="p-1 rounded-md text-text-secondary hover:bg-surface-pill transition-colors shrink-0">
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-2 pb-4 space-y-6">
+      <div className="min-h-0 flex-auto overflow-y-auto px-6 pb-4 space-y-6">
         {error && (
           <div className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm flex items-center gap-2 border border-red-200">
             <X className="w-4 h-4" />
@@ -96,6 +94,7 @@ export const ContainerSettingsModal = ({
           <label className="text-sm font-bold text-text-secondary">{t("color")}</label>
           <div className="flex flex-wrap gap-2">
             <button 
+              type="button"
               onClick={() => setColor(undefined)}
               className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-transform ${!color ? 'border-indigo-500 scale-110' : 'border-transparent hover:scale-110'}`}
               title={t("default")}
@@ -106,6 +105,7 @@ export const ContainerSettingsModal = ({
             </button>
             {AVAILABLE_COLORS.map(c => (
               <button
+                type="button"
                 key={c}
                 onClick={() => setColor(c)}
                 className={`w-8 h-8 rounded-full border-2 transition-transform ${COLOR_VARIANTS[c].bg} ${color === c ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-surface-card scale-110 border-white' : 'border-black/10 dark:border-white/10 hover:scale-110'}`}
@@ -119,6 +119,7 @@ export const ContainerSettingsModal = ({
           <label className="text-sm font-bold text-text-secondary">{t("icon")}</label>
           <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
             <button
+              type="button"
               onClick={() => setIcon(undefined)}
               className={`aspect-square rounded-lg border-2 flex items-center justify-center transition-colors ${!icon ? 'border-indigo-500 bg-indigo-500/10 text-indigo-500' : 'border-border-lite bg-surface-base hover:border-indigo-300 text-text-primary'}`}
               title="Ninguno"
@@ -127,6 +128,7 @@ export const ContainerSettingsModal = ({
             </button>
             {Object.entries(AVAILABLE_ICONS).map(([iconName, IconComponent]) => (
               <button
+                type="button"
                 key={iconName}
                 onClick={() => setIcon(iconName)}
                 className={`aspect-square rounded-lg border-2 flex items-center justify-center transition-colors ${icon === iconName ? 'border-indigo-500 bg-indigo-500/10 text-indigo-500' : 'border-border-lite bg-surface-base hover:border-indigo-300 text-text-primary'}`}
@@ -139,14 +141,16 @@ export const ContainerSettingsModal = ({
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-border-lite mt-auto">
+      <div className="flex shrink-0 justify-end gap-3 px-6 py-4 border-t border-border-lite">
         <button
+          type="button"
           onClick={handleClose}
           className="px-4 py-2 rounded-lg font-medium text-text-secondary hover:bg-surface-pill transition-colors"
         >
           {t("cancel") || "Cancelar"}
         </button>
         <button
+          type="button"
           onClick={handleSave}
           className="px-4 py-2 rounded-lg font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm"
         >
