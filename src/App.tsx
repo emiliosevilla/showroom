@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from './i18n/LanguageContext';
 import { useFileSystem } from './hooks/useFileSystem';
+import { useDragAndDrop } from './hooks/useDragAndDrop';
 import { setKey, getKey } from './utils/idb';
 import { classifyFiles, ClassificationResult } from './services/classifier';
 import { generateEnhancedHtmlString, getImagePreview } from './exportHtml';
@@ -12,25 +13,12 @@ import {
   DragOverlay, 
   closestCorners, 
   pointerWithin,
-  KeyboardSensor, 
-  PointerSensor, 
-  useSensor, 
-  useSensors, 
-  DragStartEvent, 
-  DragEndEvent,
-  DragOverEvent,
-  useDraggable,
-  useDroppable
 } from '@dnd-kit/core';
 import { 
   SortableContext, 
   horizontalListSortingStrategy, 
   verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-  sortableKeyboardCoordinates
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
 
@@ -58,7 +46,6 @@ export default function App() {
   const { t, language, toggleLanguage } = useLanguage();
   const [viewMode, setViewMode] = useState<'grid' | 'columns' | 'list'>('grid');
   const [classification, setClassification] = useState<ClassificationResult | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -162,6 +149,24 @@ export default function App() {
       return nextState;
     });
   };
+
+  const {
+    sensors,
+    activeId,
+    fileDropFeedback,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+  } = useDragAndDrop({
+    t,
+    classification,
+    commitClassificationChange,
+    selectedFiles,
+    setSelectedFiles,
+    focusedContainerId,
+    setFocusedContainerId,
+    setTrashOriginalLocations,
+  });
 
   const handleUndo = React.useCallback(() => {
     if (history.length === 0) return;
@@ -496,175 +501,6 @@ export default function App() {
       }
       return { ...prev, containers: newContainers };
     }, t('container_sorted'));
-  };
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const [fileDropFeedback, setFileDropFeedback] = useState<Record<string, 'success-normal' | 'success-trash' | 'abort'>>({});
-
-  const handleDragStart = (event: DragStartEvent) => {
-    const draggedId = event.active.id as string;
-    setActiveId(draggedId);
-    
-    // Ignore if dragging a container
-    if (event.active.data.current?.type === 'container' || event.active.data.current?.type === 'container-list-item') {
-      return;
-    }
-
-    // If dragging an unselected item, make it the only selected item
-    if (!selectedFiles.has(draggedId)) {
-      setSelectedFiles(new Set([draggedId]));
-    }
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { over, active } = event;
-    if (over && active.data.current?.type !== 'container' && active.data.current?.type !== 'container-list-item') {
-      let overContainerId: string | undefined = undefined;
-      
-      if (over.data.current?.type === 'container' || over.data.current?.type === 'container-list-item' || over.data.current?.type === 'grid-droppable' || over.data.current?.type === 'detail-droppable') {
-         overContainerId = over.data.current?.containerId as string | undefined;
-      }
-      
-      if (!overContainerId) {
-         if (over.id.toString().startsWith('detail-')) overContainerId = over.id.toString().replace('detail-', '');
-         else if (over.id.toString().startsWith('grid-')) overContainerId = over.id.toString().replace('grid-', '');
-         else overContainerId = over.id as string;
-      }
-
-      if (overContainerId && focusedContainerId !== overContainerId) {
-         setFocusedContainerId(overContainerId);
-      }
-    }
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    setActiveId(null);
-    const { active, over } = event;
-    
-    if (active.data.current?.type === 'container' || active.data.current?.type === 'container-list-item') {
-      if (!over || !classification) return;
-      const activeId = active.id;
-      const overId = over.id;
-
-      if (activeId !== overId) {
-        commitClassificationChange(prev => {
-          if (!prev) return prev;
-          const oldIndex = prev.containers.findIndex(c => c.id === activeId);
-          const newIndex = prev.containers.findIndex(c => c.id === overId);
-          
-          if (oldIndex !== -1 && newIndex !== -1) {
-            return {
-              ...prev,
-              containers: arrayMove(prev.containers, oldIndex, newIndex)
-            };
-          }
-          return prev;
-        }, t('container_reorganized'));
-      }
-      return;
-    }
-
-    const filesToMove: string[] = Array.from(selectedFiles);
-    if (filesToMove.length === 0) return;
-
-    let abort = false;
-    let targetContainerId: string | null = null;
-
-    if (!over || !classification) {
-      abort = true;
-    } else {
-      if (over.data.current?.type === 'container-list-item' || over.data.current?.type === 'container') {
-        abort = true;
-      } else if (over.data.current?.type === 'grid-droppable' || over.data.current?.type === 'detail-droppable') {
-        targetContainerId = over.data.current.containerId;
-      }
-
-      if (!targetContainerId) {
-        abort = true;
-      }
-    }
-
-    const originContainerId = classification?.containers.find(c => c.files.includes(filesToMove[0]))?.id;
-
-    if (abort || (targetContainerId && targetContainerId === originContainerId)) {
-      setFileDropFeedback(prev => {
-        const next = { ...prev };
-        filesToMove.forEach(id => { next[id] = 'abort'; });
-        return next;
-      });
-      setTimeout(() => {
-        setFileDropFeedback(prev => {
-          const next = { ...prev };
-          filesToMove.forEach(id => delete next[id]);
-          return next;
-        });
-      }, 1000);
-      
-      if (originContainerId && focusedContainerId !== originContainerId) {
-         setFocusedContainerId(originContainerId);
-      }
-      return;
-    }
-
-    // Success drop
-    setFileDropFeedback(prev => {
-      const next = { ...prev };
-      filesToMove.forEach(id => { next[id] = targetContainerId === 'trash' ? 'success-trash' : 'success-normal'; });
-      return next;
-    });
-    setTimeout(() => {
-      setFileDropFeedback(prev => {
-        const next = { ...prev };
-        filesToMove.forEach(id => delete next[id]);
-        return next;
-      });
-    }, 1000);
-
-    commitClassificationChange(prev => {
-      if (!prev) return prev;
-      
-      let newContainers = [...prev.containers];
-      const targetIndex = newContainers.findIndex(c => c.id === targetContainerId);
-      if (targetIndex === -1) return prev;
-
-      filesToMove.forEach((fileId: string) => {
-        const sourceIndex = newContainers.findIndex(c => c.files.includes(fileId));
-        if (sourceIndex !== -1 && sourceIndex !== targetIndex) {
-            newContainers[sourceIndex] = {
-               ...newContainers[sourceIndex],
-               files: newContainers[sourceIndex].files.filter(f => f !== fileId)
-            };
-            newContainers[targetIndex] = {
-               ...newContainers[targetIndex],
-               files: [fileId, ...newContainers[targetIndex].files]
-            };
-        }
-      });
-      return { containers: newContainers };
-    }, `Movido(s) ${filesToMove.length} archivo(s)` + (targetContainerId === 'trash' ? t('to_trash') : ''));
-
-    filesToMove.forEach((fileId: string) => {
-      const sourceContainerId = classification?.containers.find(c => c.files.includes(fileId))?.id;
-      if (sourceContainerId && sourceContainerId !== targetContainerId) {
-        if (targetContainerId === 'trash') {
-          setTrashOriginalLocations(prev => ({ ...prev, [fileId]: sourceContainerId }));
-        } else if (sourceContainerId === 'trash') {
-          setTrashOriginalLocations(prev => {
-            const next = { ...prev };
-            delete next[fileId];
-            return next;
-          });
-        }
-      }
-    });
-    
-    setSelectedFiles(new Set());
   };
 
   const handleExport = async () => {
