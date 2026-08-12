@@ -5,9 +5,48 @@ export interface FileEntry {
   name: string;
   kind: 'file' | 'directory';
   lastModified?: number;
+  /** Bytes; filled on hydrate or from FileList fallback. */
+  size?: number;
+  /**
+   * Birth/creation time. Not available via browser File API —
+   * reserved for Phase 5 NativeBridge.
+   */
+  createdAt?: number;
   extension?: string;
   fileObject?: File;
   fileHandle?: any; // FileSystemFileHandle
+  /** True after ensureFileHydrated resolved content metadata. */
+  hydrated?: boolean;
+}
+
+/** Lazily load File blob + size/lastModified from FileSystemFileHandle. */
+export async function ensureFileHydrated(entry: FileEntry): Promise<FileEntry> {
+  if (entry.kind !== 'file') return entry;
+  if (entry.hydrated && entry.fileObject) return entry;
+  if (entry.fileObject) {
+    return {
+      ...entry,
+      size: entry.size ?? entry.fileObject.size,
+      lastModified: entry.lastModified || entry.fileObject.lastModified,
+      hydrated: true,
+    };
+  }
+  if (entry.fileHandle && typeof entry.fileHandle.getFile === 'function') {
+    try {
+      const file: File = await entry.fileHandle.getFile();
+      return {
+        ...entry,
+        fileObject: file,
+        size: file.size,
+        lastModified: file.lastModified,
+        hydrated: true,
+      };
+    } catch (err) {
+      console.warn(`Failed to hydrate file ${entry.path}:`, err);
+      return { ...entry, hydrated: true };
+    }
+  }
+  return { ...entry, hydrated: true };
 }
 
 export function processFileList(files: FileList): { entries: FileEntry[], rootName: string } {
@@ -55,13 +94,20 @@ export function processFileList(files: FileList): { entries: FileEntry[], rootNa
       name: name,
       kind: 'file',
       lastModified: file.lastModified,
+      size: file.size,
       extension: extension,
-      fileObject: file
+      fileObject: file,
+      hydrated: true,
     });
   }
 
   return { entries: result, rootName };
 }
+
+/** Max nested folders (not counting the root handle) before scan throws LIMIT_EXCEEDED. */
+export const MAX_FOLDERS = 100;
+/** Max files before scan throws LIMIT_EXCEEDED. */
+export const MAX_FILES = 1000;
 
 export async function scanDirectory(
   dirHandle: any, 
@@ -71,9 +117,6 @@ export async function scanDirectory(
   const files: FileEntry[] = [];
   let folderCount = 0;
   let fileCount = 0;
-  
-  const MAX_FOLDERS = 100;
-  const MAX_FILES = 1000;
   
   // Recursive function requires async iteration over handles
   async function readDir(handle: any, currentPath: string) {

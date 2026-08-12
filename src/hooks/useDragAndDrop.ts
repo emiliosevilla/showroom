@@ -85,6 +85,11 @@ export function useDragAndDrop({
         else overContainerId = over.id as string;
       }
 
+      // Sidebar boxes use a 0.5s hover dwell in SplitMasterItem — do not switch focus here.
+      if (over.data.current?.type === 'container-list-item') {
+        return;
+      }
+
       if (overContainerId && focusedContainerId !== overContainerId) {
         setFocusedContainerId(overContainerId);
       }

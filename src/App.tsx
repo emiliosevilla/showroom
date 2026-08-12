@@ -6,7 +6,7 @@ import { useDragAndDrop } from './hooks/useDragAndDrop';
 import { setKey, getKey } from './utils/idb';
 import { classifyFiles, ClassificationResult } from './services/classifier';
 import { generateEnhancedHtmlString, getImagePreview } from './exportHtml';
-import { FolderSearch, Loader2, Download, Upload, FolderOpen, ArrowRight, CheckCircle, Search, Filter, Moon, Sun, Share2, LayoutGrid, List, ArrowUpDown, Star, Trash2, RotateCcw, ChevronDown, ChevronRight, CheckSquare, Square, Plus, X, ArrowDownAZ, PieChart as PieChartIcon, Undo2, Redo2, ZoomIn, ZoomOut, Maximize, Play, Pause, ChevronLeft, Settings, Type, Image as ImageIcon, Video, Music, FileText, Archive, Code, Briefcase, Camera, Book, File, Globe, Key, Box, Heart, Zap, Shield, Database, Folder } from 'lucide-react';
+import { FolderSearch, Loader2, Download, Upload, FolderOpen, ArrowRight, Search, Filter, Moon, Sun, Share2, ArrowUpDown, Star, Trash2, RotateCcw, ChevronDown, ChevronRight, CheckSquare, Square, Plus, X, ArrowDownAZ, PieChart as PieChartIcon, Undo2, Redo2, Settings, Type, Image as ImageIcon, Video, Music, FileText, Archive, Code, Briefcase, Camera, Book, File, Globe, Key, Box, Heart, Zap, Shield, Database, Folder } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { 
   DndContext, 
@@ -26,8 +26,7 @@ import { COLOR_VARIANTS, AVAILABLE_COLORS, AVAILABLE_ICONS, renderIcon } from '.
 
 import { ContainerSettingsModal } from './components/Modals/ContainerSettingsModal';
 
-import { DetailDroppableArea, GridDroppableArea } from './components/DroppableAreas';
-import { FilePreviewModal } from './components/Modals/FilePreviewModal';
+import { DetailDroppableArea } from './components/DroppableAreas';
 
 import { FileItem } from './components/FileItem';
 
@@ -36,15 +35,17 @@ import { ContainerColumn } from './components/ContainerColumn';
 import { PreviewTooltip } from './components/PreviewTooltip';
 
 import { SplitMasterItem } from './components/SplitMasterItem';
+import { FilePreviewPane } from './components/FilePreviewPane';
+import { FilePropertiesPanel } from './components/FilePropertiesPanel';
+import { Tooltip } from './components/Tooltip';
+import { ensureFileHydrated } from './utils/fileSystem';
+import { isEmbeddedFrame } from './utils/embedContext';
 
-import { ListViewTable } from './components/ListViewTable';
-
-
-// --- Main App ---
+type FileSortMode = 'name_asc' | 'name_desc' | 'date' | 'size' | 'ext' | 'favorites';
 
 export default function App() {
   const { t, language, toggleLanguage } = useLanguage();
-  const [viewMode, setViewMode] = useState<'grid' | 'columns' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'columns'>('grid');
   const [classification, setClassification] = useState<ClassificationResult | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -55,6 +56,8 @@ export default function App() {
   const [customizeContainerId, setCustomizeContainerId] = useState<string | null>(null);
   const [trashOriginalLocations, setTrashOriginalLocations] = useState<Record<string, string>>({}); // 'all', 'executable', 'directory', 'image', 'document'
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [activePreviewPath, setActivePreviewPath] = useState<string | null>(null);
+  const [fileSortMode, setFileSortMode] = useState<FileSortMode>('favorites');
   const [isDirty, setIsDirty] = useState(false);
   const [favoritesTick, setFavoritesTick] = useState(0);
 
@@ -321,25 +324,45 @@ export default function App() {
 
   const handleFileClick = (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
     if (e && 'stopPropagation' in e) e.stopPropagation();
+    setActivePreviewPath(id);
     setSelectedFiles(prev => {
       const next = new Set(prev);
       if (e && 'shiftKey' in e && e.shiftKey) {
         next.add(id);
+      } else if (e && 'metaKey' in e && (e.metaKey || ('ctrlKey' in e && e.ctrlKey))) {
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
       } else {
-        if (next.has(id)) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
+        return new Set([id]);
       }
       return next;
     });
   };
 
-  const handleFileDoubleClick = (e: React.MouseEvent, path: string) => {
+  const scannedFilesRef = useRef(scannedFiles);
+  scannedFilesRef.current = scannedFiles;
+
+  useEffect(() => {
+    if (!activePreviewPath) return;
+    let cancelled = false;
+    (async () => {
+      const entry = scannedFilesRef.current.find(sf => sf.path === activePreviewPath);
+      if (!entry || (entry.hydrated && entry.fileObject)) return;
+      const hydrated = await ensureFileHydrated(entry);
+      if (cancelled) return;
+      setScannedFiles(prev => prev.map(f => f.path === hydrated.path ? { ...f, ...hydrated } : f));
+    })();
+    return () => { cancelled = true; };
+  }, [activePreviewPath, setScannedFiles]);
+
+  const handleFileDoubleClick = async (e: React.MouseEvent, path: string) => {
     e.stopPropagation();
     try {
-      const fileEntry = scannedFiles.find(sf => sf.path === path);
+      let fileEntry = scannedFiles.find(sf => sf.path === path);
+      if (fileEntry && !fileEntry.fileObject) {
+        fileEntry = await ensureFileHydrated(fileEntry);
+        setScannedFiles(prev => prev.map(f => f.path === fileEntry!.path ? { ...f, ...fileEntry! } : f));
+      }
       if (fileEntry && fileEntry.fileObject) {
         const url = URL.createObjectURL(fileEntry.fileObject);
         const a = document.createElement('a');
@@ -357,6 +380,80 @@ export default function App() {
 
   const handleFavoriteToggle = () => {
     setFavoritesTick(prev => prev + 1);
+  };
+
+  const moveFilesToTrash = (paths: string[]) => {
+    if (paths.length === 0) return;
+    commitClassificationChange(prev => {
+      if (!prev) return prev;
+      const newContainers = prev.containers.map(c => {
+        if (c.id === 'trash') {
+          const merged = [...c.files];
+          paths.forEach(p => { if (!merged.includes(p)) merged.push(p); });
+          return { ...c, files: merged };
+        }
+        return { ...c, files: c.files.filter(f => !paths.includes(f)) };
+      });
+      return { ...prev, containers: newContainers };
+    }, `${paths.length} ${t('to_trash')}`);
+    setTrashOriginalLocations(prev => {
+      const next = { ...prev };
+      paths.forEach(p => {
+        const origin = classification?.containers.find(c => c.id !== 'trash' && c.files.includes(p));
+        if (origin) next[p] = origin.id;
+      });
+      return next;
+    });
+    setSelectedFiles(prev => {
+      const next = new Set(prev);
+      paths.forEach(p => next.delete(p));
+      return next;
+    });
+    if (activePreviewPath && paths.includes(activePreviewPath)) setActivePreviewPath(null);
+  };
+
+  const zipSelectedPaths = async (paths: string[]) => {
+    const zip = new JSZip();
+    for (const path of paths) {
+      let entry = scannedFiles.find(f => f.path === path);
+      if (!entry) continue;
+      if (!entry.fileObject) {
+        entry = await ensureFileHydrated(entry);
+        setScannedFiles(prev => prev.map(f => f.path === entry!.path ? { ...f, ...entry! } : f));
+      }
+      if (entry.fileObject) zip.file(entry.name, entry.fileObject);
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `showroom_selection.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setRecentAction({ message: t('zip_exported'), timestamp: Date.now(), type: 'normal' });
+  };
+
+  const sortFilesForDisplay = (files: string[]): string[] => {
+    const basename = (p: string) => p.split('/').pop() || p;
+    return [...files].sort((a, b) => {
+      const ea = scannedFiles.find(sf => sf.path === a);
+      const eb = scannedFiles.find(sf => sf.path === b);
+      const aFav = localStorage.getItem(`favorite-${a}`) === 'true';
+      const bFav = localStorage.getItem(`favorite-${b}`) === 'true';
+      if (fileSortMode === 'favorites') {
+        if (aFav && !bFav) return -1;
+        if (!aFav && bFav) return 1;
+        return basename(a).localeCompare(basename(b), undefined, { sensitivity: 'base' });
+      }
+      if (fileSortMode === 'name_asc') return basename(a).localeCompare(basename(b), undefined, { sensitivity: 'base' });
+      if (fileSortMode === 'name_desc') return basename(b).localeCompare(basename(a), undefined, { sensitivity: 'base' });
+      if (fileSortMode === 'date') return (eb?.lastModified || 0) - (ea?.lastModified || 0);
+      if (fileSortMode === 'size') return (eb?.size || 0) - (ea?.size || 0);
+      if (fileSortMode === 'ext') return (ea?.extension || '').localeCompare(eb?.extension || '');
+      return 0;
+    });
   };
 
   useEffect(() => {
@@ -772,85 +869,146 @@ export default function App() {
 
 
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-border-lite bg-surface-card px-8 pt-6 pb-4 shadow-sm z-10 shrink-0 transition-colors duration-200">
-        <div className="flex items-center space-x-4">
-          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-            <FolderOpen className="text-white w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="font-bold text-text-primary flex items-baseline gap-2">
-              <span className="text-[27px]">showroom</span>
-              <span className="text-[13.5px] text-text-secondary font-normal">v1</span>
-            </h1>
+      <header className={`flex items-center border-b border-border-lite bg-surface-card px-8 shadow-sm z-20 shrink-0 transition-colors duration-200 ${step === 'editor' ? 'py-2 gap-4' : 'pt-6 pb-4 justify-between gap-3'}`}>
+        <div className="flex items-center gap-4 shrink-0">
+          <h1 className="font-bold text-text-primary">
+            <span className={step === 'editor' ? 'text-xl' : 'text-[27px]'}>showroom</span>
+          </h1>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={toggleLanguage} 
+              className="px-2.5 py-1.5 rounded-lg hover:bg-surface-pill transition-colors text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold shrink-0"
+              aria-label={language === 'es' ? t('switch_en') : t('switch_es')}
+            >
+              {language === 'es' ? 'English' : 'Español'}
+            </button>
+            <Tooltip content={t("dark_mode_toggle")}>
+              <button 
+                onClick={toggleDarkMode} 
+                className="p-1.5 rounded-lg hover:bg-surface-pill transition-colors text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500 shrink-0"
+                aria-label={t("dark_mode_toggle")}
+              >
+                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+            </Tooltip>
           </div>
         </div>
-        
-        <div className="flex items-center space-x-3">
-          <button 
-            onClick={toggleLanguage} 
-            className="p-2.5 rounded-xl hover:bg-surface-pill transition-colors text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-lg"
-            title={language === 'es' ? t('switch_en') : t('switch_es')}
-          >
-            {language === 'es' ? '🇪🇸' : '🇬🇧'}
-          </button>
-          <button 
-            onClick={toggleDarkMode} 
-            className="p-2.5 rounded-xl hover:bg-surface-pill transition-colors text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            title={t("dark_mode_toggle")}
-          >
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
-          
-          {step === 'editor' && (
-            <>
-              <div className="flex items-center space-x-1 mr-2 bg-surface-pill rounded-lg p-1 border border-border-lite">
-                <button
-                  onClick={handleUndo}
-                  disabled={history.length === 0}
-                  className="p-2 rounded text-text-secondary hover:text-text-primary hover:bg-surface-card disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                  title={t("undo_shortcut")}
-                >
-                  <Undo2 className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={handleRedo}
-                  disabled={future.length === 0}
-                  className="p-2 rounded text-text-secondary hover:text-text-primary hover:bg-surface-card disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                  title={t("redo_shortcut")}
-                >
-                  <Redo2 className="w-5 h-5" />
-                </button>
+
+        {step === 'editor' && (
+          <div className="flex-1 min-w-0 overflow-x-auto">
+            <div className="flex items-center gap-2 w-max ml-auto">
+              <div className="flex items-center space-x-0.5 bg-surface-pill rounded-lg p-0.5 border border-border-lite shrink-0">
+                <Tooltip content={t("undo_shortcut")}>
+                  <button
+                    onClick={handleUndo}
+                    disabled={history.length === 0}
+                    className="p-1.5 rounded text-text-secondary hover:text-text-primary hover:bg-surface-card disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                    aria-label={t("undo_shortcut")}
+                  >
+                    <Undo2 className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+                <Tooltip content={t("redo_shortcut")}>
+                  <button
+                    onClick={handleRedo}
+                    disabled={future.length === 0}
+                    className="p-1.5 rounded text-text-secondary hover:text-text-primary hover:bg-surface-card disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                    aria-label={t("redo_shortcut")}
+                  >
+                    <Redo2 className="w-4 h-4" />
+                  </button>
+                </Tooltip>
               </div>
 
-              <div className="flex items-center rounded-md bg-surface-pill pl-4 pr-2 py-1.5 border border-border-lite">
-                <span className="mr-2 text-xs font-mono text-text-secondary hidden sm:inline">{t("folder_label")}</span>
-                <span className="text-sm font-medium text-text-primary truncate max-w-[120px] sm:max-w-[150px] mr-3">{folderName}</span>
-                <button onClick={handleSelectFolder} className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold px-2 py-1.5 rounded bg-surface-card border border-border-lite hover:bg-surface-base transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <div className="flex items-center rounded-md bg-surface-pill pl-2 pr-1 py-1 border border-border-lite shrink-0">
+                <span className="mr-1.5 text-[10px] font-mono text-text-secondary hidden md:inline">{t("folder_label")}</span>
+                <span className="text-xs font-medium text-text-primary truncate max-w-[80px] sm:max-w-[120px] mr-2">{folderName}</span>
+                <button onClick={handleSelectFolder} className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold px-1.5 py-1 rounded bg-surface-card border border-border-lite hover:bg-surface-base transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                   {t("change_btn")}
                 </button>
               </div>
+
               <button 
                 onClick={handleExport}
-                className="flex items-center space-x-2 rounded-lg bg-surface-card border border-border-lite px-4 py-2 text-sm font-bold text-text-primary shadow-sm hover:opacity-90 transition-opacity"
+                className="flex items-center gap-1.5 rounded-lg bg-surface-card border border-border-lite px-2.5 py-1.5 text-xs font-bold text-text-primary shadow-sm hover:opacity-90 transition-opacity shrink-0"
               >
-                <Upload className="w-4 h-4" />
-                <span className="hidden sm:inline">{t("export_space")}</span>
+                <Upload className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">{t("export_space")}</span>
               </button>
               <button 
                 onClick={handleExportZip}
                 disabled={isExportingZip}
-                className="flex items-center space-x-2 rounded-lg bg-indigo-600 text-white border border-indigo-700 px-4 py-2 text-sm font-bold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg bg-indigo-600 text-white border border-indigo-700 px-2.5 py-1.5 text-xs font-bold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
               >
-                {isExportingZip ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                <span className="hidden sm:inline">{isExportingZip ? t('exporting') : t('export_zip_btn')}</span>
+                {isExportingZip ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                <span className="hidden lg:inline">{isExportingZip ? t('exporting') : t('export_zip_btn')}</span>
               </button>
-            </>
-          )}
-        </div>
+
+              <div className="hidden sm:block h-5 w-px bg-border-lite shrink-0" />
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={expandAll} className="px-1.5 py-1 text-[10px] font-medium text-text-secondary hover:text-text-primary hover:bg-surface-pill rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label={t("expand_all_containers")}>{t("expand_all")}</button>
+                <span className="text-border-heavy text-xs">|</span>
+                <button onClick={collapseAll} className="px-1.5 py-1 text-[10px] font-medium text-text-secondary hover:text-text-primary hover:bg-surface-pill rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label={t("collapse_all_containers")}>{t("collapse_all")}</button>
+              </div>
+
+              <div className="relative w-36 sm:w-44 shrink-0">
+                <Search className="w-3.5 h-3.5 text-text-secondary absolute left-2 top-1/2 -translate-y-1/2" />
+                <input 
+                  type="text"
+                  placeholder={t("search_by_name")}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-surface-card border border-border-lite pl-7 pr-7 py-1.5 rounded-lg text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  aria-label={t("search_by_name_aria")}
+                />
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')} 
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-text-secondary hover:text-text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+                    aria-label={t("clear_search")}
+                    title={t("clear_search")}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              <div className="relative shrink-0">
+                <Filter className="w-3.5 h-3.5 text-text-secondary absolute left-2 top-1/2 -translate-y-1/2" />
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="appearance-none bg-surface-card border border-border-lite pl-7 pr-6 py-1.5 rounded-lg text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  aria-label={t("filter_by_type")}
+                >
+                  <option value="all">{t("types_all")}</option>
+                  <option value="executable">{t("types_executables")}</option>
+                  <option value="directory">{t("types_subfolders")}</option>
+                  <option value="image">{t("types_images")}</option>
+                  <option value="document">{t("types_documents")}</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-text-secondary">
+                  <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+              </div>
+
+              <Tooltip content={t("view_stats")}>
+                <button
+                  onClick={() => setShowDashboard(!showDashboard)}
+                  className={`p-1.5 rounded-lg border border-border-lite transition-colors shrink-0 ${showDashboard ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'bg-surface-card text-text-secondary hover:text-text-primary'}`}
+                  aria-label={t("view_stats")}
+                >
+                  <PieChartIcon className="w-3.5 h-3.5" />
+                </button>
+              </Tooltip>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Area */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-7xl mx-auto">
+      <main className={`flex-1 flex flex-col items-center w-full max-w-7xl mx-auto ${step === 'editor' ? 'px-8 py-3 justify-start min-h-0' : 'px-8 py-6 justify-center'}`}>
         <AnimatePresence mode="wait">
           
           {step === 'input' && (
@@ -867,63 +1025,48 @@ export default function App() {
               </div>
 
               <div className="space-y-6">
-                {(window.self !== window.top) ? (
-                  <div className="text-center bg-indigo-500/10 border border-indigo-500/20 p-6 rounded-2xl w-full">
-                    <h3 className="text-xl font-bold text-text-primary mb-2">{t("new_tab_req")}</h3>
-                    <p className="text-text-secondary mb-6 text-sm">
-                      <span dangerouslySetInnerHTML={{ __html: t("open_new_tab_msg") }} />
-                    </p>
-                    <a 
-                      href={window.location.href} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-6 py-4 text-sm font-bold text-white shadow-md transition-all"
-                    >
-                      <span>{t("open_new_tab")}</span>
-                    </a>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <button 
-                      onClick={handleSelectFolder}
-                      className="w-full group bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-xl flex items-center justify-between transition-all shadow-md"
-                    >
-                      <div className="flex items-center gap-3">
-                        <FolderSearch className="w-5 h-5 text-indigo-200 group-hover:text-white transition-colors" />
-                        <span className="font-semibold transition-colors">{t("select_folder_short")}</span>
-                      </div>
-                      <ArrowRight className="w-5 h-5 text-indigo-200 group-hover:text-white transition-colors group-hover:translate-x-1" />
-                    </button>
+                <div className="space-y-4">
+                  <button 
+                    onClick={handleSelectFolder}
+                    className="w-full group bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-xl flex items-center justify-between transition-all shadow-md"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FolderSearch className="w-5 h-5 text-indigo-200 group-hover:text-white transition-colors" />
+                      <span className="font-semibold transition-colors">{t("select_folder_short")}</span>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-indigo-200 group-hover:text-white transition-colors group-hover:translate-x-1" />
+                  </button>
+                  {isEmbeddedFrame() && (
                     <p className="text-center text-xs text-text-secondary mt-2 opacity-80">
-                      {t("browser_permission_1")} <strong>{t("browser_permission_2")}</strong> {t("browser_permission_3")}
+                      {t("select_dir_fallback")}
                     </p>
-                    {savedSessions.length > 0 && (
-                      <div className="space-y-2 mt-4 pt-4 border-t border-indigo-500/10">
-                        <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">{t("recent_sessions")}</p>
-                        {savedSessions.map((session, index) => (
-                          <button 
-                            key={index}
-                            onClick={() => handleResumeSession(session)}
-                            className="w-full group bg-surface-card hover:bg-surface-base border border-border-lite hover:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 p-3 rounded-xl flex items-center justify-between transition-all shadow-sm"
-                          >
-                            <div className="flex items-center gap-3">
-                              <RotateCcw className="w-4 h-4 opacity-70" />
-                              <div className="flex flex-col items-start">
-                                <span className="font-medium text-sm truncate max-w-[200px] text-text-primary">{session.folderName}</span>
-                                {session.timestamp && (
-                                  <span className="text-xs text-text-secondary opacity-70">
-                                    {new Date(session.timestamp).toLocaleDateString()} {new Date(session.timestamp).toLocaleTimeString()}
-                                  </span>
-                                )}
-                              </div>
+                  )}
+                  {!isEmbeddedFrame() && savedSessions.length > 0 && (
+                    <div className="space-y-2 mt-4 pt-4 border-t border-indigo-500/10">
+                      <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">{t("recent_sessions")}</p>
+                      {savedSessions.map((session, index) => (
+                        <button 
+                          key={index}
+                          onClick={() => handleResumeSession(session)}
+                          className="w-full group bg-surface-card hover:bg-surface-base border border-border-lite hover:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 p-3 rounded-xl flex items-center justify-between transition-all shadow-sm"
+                        >
+                          <div className="flex items-center gap-3">
+                            <RotateCcw className="w-4 h-4 opacity-70" />
+                            <div className="flex flex-col items-start">
+                              <span className="font-medium text-sm truncate max-w-[200px] text-text-primary">{session.folderName}</span>
+                              {session.timestamp && (
+                                <span className="text-xs text-text-secondary opacity-70">
+                                  {new Date(session.timestamp).toLocaleDateString()} {new Date(session.timestamp).toLocaleTimeString()}
+                                </span>
+                              )}
                             </div>
-                            <ArrowRight className="w-4 h-4 opacity-70 transition-transform group-hover:translate-x-1" />
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                          </div>
+                          <ArrowRight className="w-4 h-4 opacity-70 transition-transform group-hover:translate-x-1" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {errorMsg && <p className="text-red-500 text-sm mt-3 flex items-center justify-center gap-1"><ArrowRight className="w-4 h-4"/> {errorMsg}</p>}
               </div>
             </motion.div>
@@ -962,89 +1105,8 @@ export default function App() {
               key="editor"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              className="w-full h-full flex flex-col"
+              className="w-full h-full flex flex-col min-h-0 flex-1"
             >
-              <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
-                  <span className="text-text-secondary text-sm font-medium">{t("files_organized_in")} {classification.containers.length} {t("containers_drag_drop")}</span>
-                  {viewMode !== 'list' && (
-                    <div className="ml-4 flex items-center gap-1">
-                      <button onClick={expandAll} className="px-2 py-1 text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label={t("expand_all_containers")}>{t("expand_all")}</button>
-                      <span className="text-border-heavy">|</span>
-                      <button onClick={collapseAll} className="px-2 py-1 text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label={t("collapse_all_containers")}>{t("collapse_all")}</button>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <div className="flex bg-surface-card rounded-lg border border-border-lite p-1">
-                    <button
-                      onClick={() => setViewMode('grid')}
-                      className={`p-1.5 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${viewMode === 'grid' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'text-text-secondary hover:text-text-primary'}`}
-                      title={t("main_view")}
-                      aria-label={t("main_view")}
-                    >
-                      <LayoutGrid className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setViewMode('list')}
-                      className={`p-1.5 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${viewMode === 'list' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'text-text-secondary hover:text-text-primary'}`}
-                      title={t("list_view")}
-                      aria-label={t("list_view")}
-                    >
-                      <List className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="relative flex-1 sm:w-64">
-                    <Search className="w-4 h-4 text-text-secondary absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input 
-                      type="text"
-                      placeholder={t("search_by_name")}
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full bg-surface-card border border-border-lite pl-9 pr-8 py-2 rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      aria-label={t("search_by_name_aria")}
-                    />
-                    {searchTerm && (
-                      <button 
-                        onClick={() => setSearchTerm('')} 
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-secondary hover:text-text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
-                        aria-label={t("clear_search")}
-                        title={t("clear_search")}
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <Filter className="w-4 h-4 text-text-secondary absolute left-3 top-1/2 -translate-y-1/2" />
-                    <select
-                      value={filterType}
-                      onChange={(e) => setFilterType(e.target.value)}
-                      className="appearance-none bg-surface-card border border-border-lite pl-9 pr-8 py-2 rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                      aria-label={t("filter_by_type")}
-                    >
-                      <option value="all">{t("types_all")}</option>
-                      <option value="executable">{t("types_executables")}</option>
-                      <option value="directory">{t("types_subfolders")}</option>
-                      <option value="image">{t("types_images")}</option>
-                      <option value="document">{t("types_documents")}</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-secondary">
-                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowDashboard(!showDashboard)}
-                    className={`p-2 rounded-lg border border-border-lite transition-colors ${showDashboard ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'bg-surface-card text-text-secondary hover:text-text-primary'}`}
-                    title={t("view_stats")}
-                  >
-                    <PieChartIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
               {showDashboard && (
                 <div className="mb-6 p-4 bg-surface-card rounded-xl border border-border-lite mx-auto w-full max-w-4xl shadow-sm">
                   <h3 className="text-sm font-semibold text-text-primary mb-4 flex items-center">
@@ -1086,8 +1148,7 @@ export default function App() {
                 </div>
               )}
 
-              <div className="flex-1 w-full overflow-hidden pb-6">
-                {viewMode !== 'list' ? (
+              <div className="flex-1 w-full overflow-hidden pb-6 pt-3">
                   <DndContext 
                     sensors={sensors}
                     collisionDetection={pointerWithin}
@@ -1096,8 +1157,8 @@ export default function App() {
                     onDragEnd={handleDragEnd}
                   >
                     {viewMode === 'grid' ? (
-                      <div className="flex w-full h-full gap-4">
-                         <div className="w-1/3 min-w-[250px] max-w-[350px] flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar pb-6 relative z-10 text-left">
+                      <div className="flex w-full h-full gap-4 px-1 pt-1">
+                         <div className="w-1/3 min-w-[250px] max-w-[350px] flex flex-col gap-2 overflow-y-auto pl-1 pr-3 pt-1 custom-scrollbar pb-6 relative z-10 text-left">
                            <SortableContext 
                              items={filteredClassification.containers.map(c => c.id)}
                              strategy={verticalListSortingStrategy}
@@ -1114,6 +1175,7 @@ export default function App() {
                                     fileCount={container.files.length}
                                     isTrash={container.id === 'trash'}
                                     isFocused={isActive}
+                                    isFileDragActive={activeId !== null && !draggingContainer}
                                     onHover={() => setFocusedContainerId(container.id)}
                                     onClick={() => setFocusedContainerId(container.id)}
                                   />
@@ -1271,32 +1333,94 @@ export default function App() {
                                            </div>
                                          )}
                                        >
-                                          <SortableContext items={focusedContainer.files} strategy={verticalListSortingStrategy}>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-8" data-files-grid="true">
-                                               {focusedContainer.files.map((file, fileIdx) => (
-                                                  <FileItem 
-                                                    key={file}
-                                                    id={file}
-                                                    index={fileIdx}
-                                                    file={file}
-                                                    containerId={focusedContainer.id}
-                                                    fileEntry={scannedFiles.find(sf => sf.path === file)}
-                                                    isSelected={selectedFiles.has(file)}
-                                                    isGroupDragging={activeId !== null && selectedFiles.has(activeId) && selectedFiles.has(file)}
-                                                    onClick={handleFileClick}
-                                                    onFavoriteToggle={handleFavoriteToggle}
-                                                    onDoubleClick={handleFileDoubleClick}
-                                                    dropFeedback={fileDropFeedback[file]}
-                                                  />
-                                               ))}
-                                               {focusedContainer.files.length === 0 && (
-                                                  <div className="col-span-full py-16 flex flex-col items-center justify-center opacity-50">
-                                                    <FolderOpen className="w-16 h-16 text-text-secondary mb-4" />
-                                                    <p className="text-sm text-text-secondary font-medium">{t("empty_container")}</p>
+                                          {(() => {
+                                            const sortedFiles = sortFilesForDisplay(focusedContainer.files);
+                                            const previewEntry = activePreviewPath
+                                              ? scannedFiles.find(sf => sf.path === activePreviewPath) || null
+                                              : null;
+                                            const entriesByPath = new Map(scannedFiles.map(sf => [sf.path, sf]));
+                                            const selectedPaths = selectedFiles.size > 0
+                                              ? Array.from(selectedFiles)
+                                              : (activePreviewPath ? [activePreviewPath] : []);
+                                            return (
+                                              <div className="flex flex-1 min-h-0 overflow-hidden">
+                                                <div className="w-[38%] min-w-[200px] max-w-[420px] flex flex-col border-r border-border-lite min-h-0">
+                                                  <div className="shrink-0 px-3 py-2 border-b border-border-lite flex items-center gap-2 bg-surface-base/50">
+                                                    <label className="text-[10px] font-semibold text-text-secondary uppercase tracking-wide shrink-0" htmlFor="file-sort-select">{t('sort_by')}</label>
+                                                    <select
+                                                      id="file-sort-select"
+                                                      value={fileSortMode}
+                                                      onChange={(e) => setFileSortMode(e.target.value as FileSortMode)}
+                                                      className="flex-1 text-xs bg-surface-card border border-border-lite rounded-md px-2 py-1 text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                      aria-label={t('sort_by')}
+                                                    >
+                                                      <option value="favorites">{t('sort_favorites')}</option>
+                                                      <option value="name_asc">{t('sort_name_asc')}</option>
+                                                      <option value="name_desc">{t('sort_name_desc')}</option>
+                                                      <option value="date">{t('sort_date')}</option>
+                                                      <option value="size">{t('sort_size')}</option>
+                                                      <option value="ext">{t('sort_ext')}</option>
+                                                    </select>
                                                   </div>
-                                               )}
-                                            </div>
-                                          </SortableContext>
+                                                  <div className="flex-1 overflow-y-auto custom-scrollbar p-3 min-h-0">
+                                                    <SortableContext items={sortedFiles} strategy={verticalListSortingStrategy}>
+                                                      <div className="flex flex-col gap-2 pb-8" data-files-grid="true">
+                                                        {sortedFiles.map((file, fileIdx) => (
+                                                          <FileItem
+                                                            key={file}
+                                                            id={file}
+                                                            index={fileIdx}
+                                                            file={file}
+                                                            containerId={focusedContainer.id}
+                                                            fileEntry={scannedFiles.find(sf => sf.path === file)}
+                                                            isSelected={selectedFiles.has(file)}
+                                                            isActivePreview={activePreviewPath === file}
+                                                            isGroupDragging={activeId !== null && selectedFiles.has(activeId) && selectedFiles.has(file)}
+                                                            onClick={handleFileClick}
+                                                            onFavoriteToggle={handleFavoriteToggle}
+                                                            onDoubleClick={handleFileDoubleClick}
+                                                            dropFeedback={fileDropFeedback[file]}
+                                                            compact
+                                                          />
+                                                        ))}
+                                                        {sortedFiles.length === 0 && (
+                                                          <div className="py-16 flex flex-col items-center justify-center opacity-50">
+                                                            <FolderOpen className="w-16 h-16 text-text-secondary mb-4" />
+                                                            <p className="text-sm text-text-secondary font-medium">{t("empty_container")}</p>
+                                                          </div>
+                                                        )}
+                                                      </div>
+                                                    </SortableContext>
+                                                  </div>
+                                                </div>
+                                                <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                                                  <FilePreviewPane
+                                                    fileEntry={previewEntry}
+                                                    name={previewEntry?.name}
+                                                    className="flex-[3] min-h-0 border-b border-border-lite"
+                                                  />
+                                                  <FilePropertiesPanel
+                                                    entry={previewEntry}
+                                                    selectedPaths={selectedPaths}
+                                                    entriesByPath={entriesByPath}
+                                                    containerId={focusedContainer.id}
+                                                    className="flex-[2] min-h-[140px]"
+                                                    app={{
+                                                      toggleFavorite: (path) => {
+                                                        const key = `favorite-${path}`;
+                                                        if (localStorage.getItem(key) === 'true') localStorage.removeItem(key);
+                                                        else localStorage.setItem(key, 'true');
+                                                        handleFavoriteToggle();
+                                                      },
+                                                      moveToTrash: moveFilesToTrash,
+                                                      zipPaths: zipSelectedPaths,
+                                                      showToast: (msg) => setRecentAction({ message: msg, timestamp: Date.now(), type: 'normal' }),
+                                                    }}
+                                                  />
+                                                </div>
+                                              </div>
+                                            );
+                                          })()}
                                        </DetailDroppableArea>
                                     </motion.div>
                                   </AnimatePresence>
@@ -1305,7 +1429,7 @@ export default function App() {
                          </div>
                       </div>
                     ) : (
-                      <div className="flex gap-6 h-full overflow-x-auto pb-4 custom-scrollbar items-start">
+                      <div className="flex gap-6 h-full overflow-x-auto pt-3 pb-4 px-1 custom-scrollbar items-start">
                         <SortableContext 
                           items={filteredClassification.containers.map(c => c.id)}
                           strategy={horizontalListSortingStrategy}
@@ -1378,9 +1502,6 @@ export default function App() {
                       ) : null}
                     </DragOverlay>
                   </DndContext>
-                ) : (
-                  <ListViewTable containers={filteredClassification.containers} scannedFiles={scannedFiles} />
-                )}
               </div>
             </motion.div>
           )}
@@ -1388,9 +1509,11 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      <footer className="text-center py-4 text-xs text-text-secondary border-t border-border-lite mt-auto bg-surface-card z-10">
-        {t("developed_by")}
-      </footer>
+      {step === 'input' && (
+        <footer className="text-center py-4 text-xs text-text-secondary border-t border-border-lite mt-auto bg-surface-card z-10">
+          {t("developed_by")}
+        </footer>
+      )}
 
       <input
         type="file"

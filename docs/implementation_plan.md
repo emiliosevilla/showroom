@@ -1,6 +1,6 @@
 # Phase 3: Refactorización Arquitectónica de App.tsx
 
-**Estado:** Completado (rama `feat-finish-pending`, HEAD `414eeb2`).
+**Estado:** Completado (rama `feat-finish-pending`, HEAD `414eeb2`; hooks + QA en `dev` 2026-08-12).
 
 `App.tsx` pasó de un monolito de ~2700 líneas a **1353 líneas** tras extraer componentes y hooks (`useFileSystem`, `useDragAndDrop`). El objetivo original era ~800 líneas de lógica de ensamblado; el recuento actual refleja el estado real del archivo.
 
@@ -47,6 +47,7 @@ Componentes clave de la interfaz.
 
 #### [NEW] src/components/SplitMasterItem.tsx
 - Contendrá el listado izquierdo en la vista dividida `SplitMasterItem`.
+- **UX (2026-08-12):** sin DnD, activación solo por click; durante DnD, hover 0,5s + spinner en el box (click bypass).
 
 #### [NEW] src/components/PreviewTooltip.tsx
 - Contendrá el `PreviewTooltip`.
@@ -64,11 +65,13 @@ El contenedor principal quedará limpio de componentes auxiliares.
 ## Verification Plan
 
 ### Automated Tests
-- `[x]` `npm run build` — pasa en rama `feat-finish-pending` (2026-08-11).
-- `[x]` `npm run lint` — pasa en rama `feat-finish-pending` (2026-08-11).
+- `[x]` `npm run build` — pasa en rama `feat-finish-pending` (2026-08-11) y en `dev` tras QA.
+- `[x]` `npm run lint` — pasa en rama `feat-finish-pending` (2026-08-11) y en `dev` tras QA.
+- `[x]` `npm run test:scan-limits` — límites 100 carpetas / 1000 archivos (2026-08-12).
 
-### Manual Verification (pendiente)
-- `[ ]` Comprobar que Drag and Drop sigue funcionando.
-- `[ ]` Comprobar que la previsualización de archivos abre los modales `<dialog>` correctamente.
-- `[ ]` Verificar que no haya pérdidas de estado de React al organizar los contenedores.
-- `[ ]` Comprobar que los límites de escaneo se respetan y no saturan la memoria.
+### Manual Verification
+- `[x]` Comprobar que Drag and Drop sigue funcionando (QA Chrome/Edge, 2026-08-12).
+- `[x]` Comprobar que la previsualización de archivos abre los modales `<dialog>` correctamente (QA 2026-08-12).
+- `[x]` Verificar que no haya pérdidas de estado de React al organizar los contenedores (QA 2026-08-12).
+- `[x]` Comprobar que los límites de escaneo se respetan (automatizado vía `test:scan-limits`).
+- `[ ]` Smoke de la build empaquetada — **aplazado con Fase 5** (empaquetado a otro día).
