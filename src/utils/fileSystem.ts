@@ -63,6 +63,11 @@ export function processFileList(files: FileList): { entries: FileEntry[], rootNa
   return { entries: result, rootName };
 }
 
+/** Max nested folders (not counting the root handle) before scan throws LIMIT_EXCEEDED. */
+export const MAX_FOLDERS = 100;
+/** Max files before scan throws LIMIT_EXCEEDED. */
+export const MAX_FILES = 1000;
+
 export async function scanDirectory(
   dirHandle: any, 
   basePath: string = '', 
@@ -71,9 +76,6 @@ export async function scanDirectory(
   const files: FileEntry[] = [];
   let folderCount = 0;
   let fileCount = 0;
-  
-  const MAX_FOLDERS = 100;
-  const MAX_FILES = 1000;
   
   // Recursive function requires async iteration over handles
   async function readDir(handle: any, currentPath: string) {
