@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Trash2, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { renderIcon } from '../utils/theme';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -9,9 +9,9 @@ import { useLanguage } from '../i18n/LanguageContext';
 export const CONTAINER_HOVER_ACTIVATE_MS = 500;
 
 export const SplitMasterItem = ({
-  id, name, color, icon, fileCount, isTrash, isFocused, isFileDragActive, onHover, onClick
+  id, name, color, icon, fileCount, isFocused, isFileDragActive, onHover, onClick
 }: {
-  key?: React.Key, id: string, name: string, color?: string, icon?: string, fileCount: number, isTrash: boolean, isFocused: boolean, isFileDragActive: boolean, onHover: () => void, onClick: () => void
+  key?: React.Key, id: string, name: string, color?: string, icon?: string, fileCount: number, isFocused: boolean, isFileDragActive: boolean, onHover: () => void, onClick: () => void
 }) => {
   const { t } = useLanguage();
   const { setNodeRef, isOver, transform, transition, attributes, listeners, isDragging } = useSortable({
@@ -36,7 +36,6 @@ export const SplitMasterItem = ({
     }
   }, []);
 
-  // During file drag, pointer events don't fire reliably — use dnd-kit isOver instead.
   useEffect(() => {
     if (!isFileDragActive || isFocused || isDragging) {
       clearHoverTimer();
@@ -86,7 +85,7 @@ export const SplitMasterItem = ({
       `}
     >
       <div className="flex flex-1 items-center gap-3 overflow-hidden outline-none touch-none" {...attributes} {...listeners}>
-         {isTrash ? <Trash2 className={`w-4 h-4 shrink-0 ${isFocused ? 'text-red-500' : 'text-red-400'}`} /> : renderIcon(icon, color, 'w-4 h-4')}
+         {renderIcon(icon, color, 'w-4 h-4')}
          <span className={`font-semibold truncate text-sm select-none text-text-primary`}>{name.startsWith("cat_") ? t(name as any) : name}</span>
       </div>
       {isHoverPending ? (

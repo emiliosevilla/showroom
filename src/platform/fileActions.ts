@@ -10,18 +10,14 @@ export const ACTION_CATALOG: ActionDefinition[] = [
   { id: 'download', group: 'share' },
   { id: 'share', group: 'share' },
   { id: 'copyPath', group: 'share' },
-  { id: 'zipSelection', group: 'share' },
-  { id: 'compress', group: 'share' },
   { id: 'prepareToSend', group: 'share' },
   { id: 'favorite', group: 'organize' },
   { id: 'moveToContainer', group: 'organize' },
-  { id: 'trash', group: 'danger' },
 ];
 
 const HABIT_KEY = 'showroom-action-habits';
 const GROUP_ORDER_KEY = 'showroom-action-group-order';
-
-const DEFAULT_GROUP_ORDER: ActionGroupId[] = ['open', 'organize', 'share', 'danger'];
+const DEFAULT_GROUP_ORDER: ActionGroupId[] = ['open', 'organize', 'share'];
 
 type HabitMap = Record<string, number>;
 
@@ -62,7 +58,6 @@ export function getGroupOrder(): ActionGroupId[] {
   }
 }
 
-/** Suggested quick actions by extension family. */
 export function getSuggestedActions(extension?: string): ActionId[] {
   const ext = (extension || '').toLowerCase();
   if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) {
@@ -70,7 +65,7 @@ export function getSuggestedActions(extension?: string): ActionId[] {
   }
   if (ext === 'pdf') return ['openInTab', 'download', 'copyPath'];
   if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
-    return ['download', 'zipSelection', 'copyPath'];
+    return ['download', 'copyPath', 'revealInFolder'];
   }
   if (['mp4', 'webm', 'mp3', 'wav'].includes(ext)) {
     return ['open', 'download', 'share'];

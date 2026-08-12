@@ -14,7 +14,7 @@ export const FileItem = ({
   isSelected?: boolean; isGroupDragging?: boolean; onClick?: (e: React.MouseEvent | React.KeyboardEvent, id: string) => void;
   onFavoriteToggle?: () => void;
   onDoubleClick?: (e: React.MouseEvent, id: string) => void;
-  dropFeedback?: 'success-normal' | 'success-trash' | 'abort';
+  dropFeedback?: 'success-normal' | 'abort';
   index?: number;
   /** Hide inline thumbnail — used in Individual list when preview pane is shown. */
   compact?: boolean;
@@ -83,7 +83,6 @@ export const FileItem = ({
         data-is-file="true"
         className={`item-pill flex flex-col rounded-lg px-3 py-2 text-xs font-medium overflow-hidden cursor-grab active:cursor-grabbing transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500
           ${dropFeedback === 'success-normal' ? 'ring-2 ring-inset ring-emerald-500 bg-emerald-50 dark:bg-emerald-900/10 shadow-md' :
-            dropFeedback === 'success-trash' ? 'ring-2 ring-inset ring-red-500 bg-red-50 dark:bg-red-900/10 shadow-md' :
             dropFeedback === 'abort' ? 'ring-2 ring-inset ring-gray-600 dark:ring-gray-400 bg-gray-50 dark:bg-gray-800 shadow-md' :
             isDragging ? 'opacity-40 ring-2 ring-dashed ring-indigo-400 bg-indigo-500/10 shadow-inner scale-[0.98]' :
             isSelected ? 'is-selected ring-2 ring-indigo-500 scale-[1.01] z-[1] relative' :

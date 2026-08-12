@@ -1,10 +1,7 @@
 /**
- * Phase 5 desktop shell stub.
- *
- * A packaged app (Electron/Tauri/etc.) should assign:
- *   window.__SHOWROOM_NATIVE__ = { revealInFolder, openWith, getBirthTime, compressWithSystem }
- *
- * Until then, native-only actions stay disabled in the UI but use the same ActionId API.
+ * Desktop shell bridge helpers.
+ * Electron preload assigns window.__SHOWROOM_NATIVE__.
+ * No destructive disk APIs (no delete / trash / system compress into workspace).
  */
 import type { NativeBridge } from './types';
 
@@ -18,14 +15,14 @@ export const DESKTOP_BRIDGE_STUB: NativeBridge = {
   async getBirthTime() {
     return undefined;
   },
-  async compressWithSystem() {
-    throw new Error('NOT_NATIVE');
-  },
 };
 
-/** Call from shell bootstrap once native APIs are ready. */
 export function registerNativeBridge(bridge: NativeBridge) {
   if (typeof window !== 'undefined') {
     window.__SHOWROOM_NATIVE__ = bridge;
   }
+}
+
+export function isElectronShell(): boolean {
+  return typeof window !== 'undefined' && Boolean(window.__SHOWROOM_IS_ELECTRON__);
 }

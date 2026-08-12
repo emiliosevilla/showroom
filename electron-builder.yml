@@ -1,0 +1,41 @@
+appId: com.emiliosevillaortego.showroom
+productName: showroom
+copyright: Copyright © Emilio Sevilla Ortego
+directories:
+  output: release
+  buildResources: electron/build
+# Frontend is already bundled by Vite into dist/ — do not ship node_modules.
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+  - "!**/node_modules/**"
+asar: true
+npmRebuild: false
+nodeGypRebuild: false
+mac:
+  category: public.app-category.utilities
+  target:
+    - dmg
+    - zip
+  hardenedRuntime: false
+  gatekeeperAssess: false
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+win:
+  # zip packs from macOS without Wine. NSIS needs Wine or a Windows runner.
+  target:
+    - target: zip
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true

@@ -12,7 +12,7 @@ import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { ClassificationResult } from '../services/classifier';
 import { TranslationKey } from '../i18n/translations';
 
-export type FileDropFeedback = Record<string, 'success-normal' | 'success-trash' | 'abort'>;
+export type FileDropFeedback = Record<string, 'success-normal' | 'abort'>;
 
 export interface UseDragAndDropParams {
   t: (key: TranslationKey, ...args: (string | number)[]) => string;
@@ -25,7 +25,6 @@ export interface UseDragAndDropParams {
   setSelectedFiles: Dispatch<SetStateAction<Set<string>>>;
   focusedContainerId: string | null;
   setFocusedContainerId: Dispatch<SetStateAction<string | null>>;
-  setTrashOriginalLocations: Dispatch<SetStateAction<Record<string, string>>>;
 }
 
 export interface UseDragAndDropReturn {
@@ -45,7 +44,6 @@ export function useDragAndDrop({
   setSelectedFiles,
   focusedContainerId,
   setFocusedContainerId,
-  setTrashOriginalLocations,
 }: UseDragAndDropParams): UseDragAndDropReturn {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [fileDropFeedback, setFileDropFeedback] = useState<FileDropFeedback>({});
@@ -85,7 +83,6 @@ export function useDragAndDrop({
         else overContainerId = over.id as string;
       }
 
-      // Sidebar boxes use a 0.5s hover dwell in SplitMasterItem — do not switch focus here.
       if (over.data.current?.type === 'container-list-item') {
         return;
       }
@@ -167,7 +164,7 @@ export function useDragAndDrop({
 
     setFileDropFeedback(prev => {
       const next = { ...prev };
-      filesToMove.forEach(id => { next[id] = targetContainerId === 'trash' ? 'success-trash' : 'success-normal'; });
+      filesToMove.forEach(id => { next[id] = 'success-normal'; });
       return next;
     });
     setTimeout(() => {
@@ -199,22 +196,7 @@ export function useDragAndDrop({
         }
       });
       return { containers: newContainers };
-    }, `Movido(s) ${filesToMove.length} archivo(s)` + (targetContainerId === 'trash' ? t('to_trash') : ''));
-
-    filesToMove.forEach((fileId: string) => {
-      const sourceContainerId = classification?.containers.find(c => c.files.includes(fileId))?.id;
-      if (sourceContainerId && sourceContainerId !== targetContainerId) {
-        if (targetContainerId === 'trash') {
-          setTrashOriginalLocations(prev => ({ ...prev, [fileId]: sourceContainerId }));
-        } else if (sourceContainerId === 'trash') {
-          setTrashOriginalLocations(prev => {
-            const next = { ...prev };
-            delete next[fileId];
-            return next;
-          });
-        }
-      }
-    });
+    }, `Movido(s) ${filesToMove.length} archivo(s)`);
 
     setSelectedFiles(new Set());
   };
