@@ -9,7 +9,7 @@ export const DetailDroppableArea = ({ containerId, isTrash = false, headerRender
   return (
     <div ref={setNodeRef} className="flex-1 flex flex-col min-h-0 relative">
       {headerRenderer && headerRenderer(isOver)}
-      <div className={`flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar transition-colors ${isOver ? (isTrash ? 'bg-red-50 dark:bg-red-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20') : 'bg-surface-base/30'}`}>
+      <div className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-colors ${isOver ? (isTrash ? 'bg-red-50 dark:bg-red-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20') : 'bg-surface-base/30'}`}>
          {children}
       </div>
     </div>

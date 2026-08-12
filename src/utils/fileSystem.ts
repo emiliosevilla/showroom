@@ -5,9 +5,48 @@ export interface FileEntry {
   name: string;
   kind: 'file' | 'directory';
   lastModified?: number;
+  /** Bytes; filled on hydrate or from FileList fallback. */
+  size?: number;
+  /**
+   * Birth/creation time. Not available via browser File API —
+   * reserved for Phase 5 NativeBridge.
+   */
+  createdAt?: number;
   extension?: string;
   fileObject?: File;
   fileHandle?: any; // FileSystemFileHandle
+  /** True after ensureFileHydrated resolved content metadata. */
+  hydrated?: boolean;
+}
+
+/** Lazily load File blob + size/lastModified from FileSystemFileHandle. */
+export async function ensureFileHydrated(entry: FileEntry): Promise<FileEntry> {
+  if (entry.kind !== 'file') return entry;
+  if (entry.hydrated && entry.fileObject) return entry;
+  if (entry.fileObject) {
+    return {
+      ...entry,
+      size: entry.size ?? entry.fileObject.size,
+      lastModified: entry.lastModified || entry.fileObject.lastModified,
+      hydrated: true,
+    };
+  }
+  if (entry.fileHandle && typeof entry.fileHandle.getFile === 'function') {
+    try {
+      const file: File = await entry.fileHandle.getFile();
+      return {
+        ...entry,
+        fileObject: file,
+        size: file.size,
+        lastModified: file.lastModified,
+        hydrated: true,
+      };
+    } catch (err) {
+      console.warn(`Failed to hydrate file ${entry.path}:`, err);
+      return { ...entry, hydrated: true };
+    }
+  }
+  return { ...entry, hydrated: true };
 }
 
 export function processFileList(files: FileList): { entries: FileEntry[], rootName: string } {
@@ -55,8 +94,10 @@ export function processFileList(files: FileList): { entries: FileEntry[], rootNa
       name: name,
       kind: 'file',
       lastModified: file.lastModified,
+      size: file.size,
       extension: extension,
-      fileObject: file
+      fileObject: file,
+      hydrated: true,
     });
   }
 

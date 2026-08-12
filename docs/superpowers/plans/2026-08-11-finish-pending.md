@@ -10,7 +10,7 @@
 
 **Branch:** `feat/finish-pending` (off `dev`). Do not commit on `dev`/`pre`/`prod`.
 
-**Status (2026-08-12):** Tasks 1–5 **DONE** (merged to `dev` via PR #11 + follow-up QA). Phase 5 packaging remains deferred (see `docs/task.md`). Follow-up UX: sidebar hover dwell (not part of original Tasks 1–5).
+**Status (2026-08-12):** Tasks 1–5 **DONE** (merged to `dev` via PR #11 + follow-up QA). Phase 5 packaging remains deferred (see `docs/task.md`). Follow-up UX: sidebar click-only activation; hover dwell only during DnD.
 
 ## Global Constraints
 
@@ -25,7 +25,7 @@
 
 ## Current state (do not redo)
 
-Already done: Phase 1 FS security, Phase 2 i18n, component extraction (`FileItem`, `ContainerColumn`, `ListViewTable`, `SplitMasterItem`, `PreviewTooltip`, `DroppableAreas`, `Modals/*` with `<dialog>`), `src/utils/theme.tsx`, hooks `useFileSystem` + `useDragAndDrop`, i18n key fix, docs sync, lint/build gate, Dependabot branch cleanup, QA fixes, scan-limits automated test, sidebar hover 2s.
+Already done: Phase 1 FS security, Phase 2 i18n, component extraction (`FileItem`, `ContainerColumn`, `ListViewTable`, `SplitMasterItem`, `PreviewTooltip`, `DroppableAreas`, `Modals/*` with `<dialog>`), `src/utils/theme.tsx`, hooks `useFileSystem` + `useDragAndDrop`, i18n key fix, docs sync, lint/build gate, Dependabot branch cleanup, QA fixes, scan-limits automated test, sidebar click-only + DnD hover dwell.
 
 Still open (out of this plan): **Fase 5 empaquetado** (aplazado).
 

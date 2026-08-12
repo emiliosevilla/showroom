@@ -5,13 +5,13 @@ import { Trash2, Loader2 } from 'lucide-react';
 import { renderIcon } from '../utils/theme';
 import { useLanguage } from '../i18n/LanguageContext';
 
-/** Hover dwell before activating a non-focused sidebar container (click bypasses). */
-export const CONTAINER_HOVER_ACTIVATE_MS = 2000;
+/** Hover dwell before activating a sidebar container while a file DnD drag is active (click bypasses). */
+export const CONTAINER_HOVER_ACTIVATE_MS = 500;
 
 export const SplitMasterItem = ({
-  id, name, color, icon, fileCount, isTrash, isFocused, onHover, onClick
+  id, name, color, icon, fileCount, isTrash, isFocused, isFileDragActive, onHover, onClick
 }: {
-  key?: React.Key, id: string, name: string, color?: string, icon?: string, fileCount: number, isTrash: boolean, isFocused: boolean, onHover: () => void, onClick: () => void
+  key?: React.Key, id: string, name: string, color?: string, icon?: string, fileCount: number, isTrash: boolean, isFocused: boolean, isFileDragActive: boolean, onHover: () => void, onClick: () => void
 }) => {
   const { t } = useLanguage();
   const { setNodeRef, isOver, transform, transition, attributes, listeners, isDragging } = useSortable({
@@ -19,6 +19,8 @@ export const SplitMasterItem = ({
   });
   const [isHoverPending, setIsHoverPending] = useState(false);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onHoverRef = useRef(onHover);
+  onHoverRef.current = onHover;
 
   const clearHoverTimer = () => {
     if (hoverTimerRef.current !== null) {
@@ -34,34 +36,32 @@ export const SplitMasterItem = ({
     }
   }, []);
 
+  // During file drag, pointer events don't fire reliably — use dnd-kit isOver instead.
   useEffect(() => {
-    if (!isFocused && !isDragging) return;
-    if (hoverTimerRef.current !== null) {
-      clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
+    if (!isFileDragActive || isFocused || isDragging) {
+      clearHoverTimer();
+      return;
     }
-    setIsHoverPending(false);
-  }, [isFocused, isDragging]);
+
+    if (!isOver) {
+      clearHoverTimer();
+      return;
+    }
+
+    if (hoverTimerRef.current !== null) return;
+
+    setIsHoverPending(true);
+    hoverTimerRef.current = setTimeout(() => {
+      hoverTimerRef.current = null;
+      setIsHoverPending(false);
+      onHoverRef.current();
+    }, CONTAINER_HOVER_ACTIVATE_MS);
+  }, [isOver, isFileDragActive, isFocused, isDragging]);
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 10 : 1,
-  };
-
-  const handleMouseEnter = () => {
-    if (isFocused || isDragging) return;
-    clearHoverTimer();
-    setIsHoverPending(true);
-    hoverTimerRef.current = setTimeout(() => {
-      hoverTimerRef.current = null;
-      setIsHoverPending(false);
-      onHover();
-    }, CONTAINER_HOVER_ACTIVATE_MS);
-  };
-
-  const handleMouseLeave = () => {
-    clearHoverTimer();
   };
 
   const handleActivateNow = () => {
@@ -72,8 +72,6 @@ export const SplitMasterItem = ({
   return (
     <div 
       ref={setNodeRef} style={style}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       onClick={handleActivateNow}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleActivateNow(); }

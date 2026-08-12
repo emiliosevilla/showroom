@@ -47,7 +47,7 @@ Componentes clave de la interfaz.
 
 #### [NEW] src/components/SplitMasterItem.tsx
 - Contendrá el listado izquierdo en la vista dividida `SplitMasterItem`.
-- **UX (2026-08-12):** activación por hover con dwell de 2s + spinner en el box; click (o Enter/Espacio) bypass inmediato.
+- **UX (2026-08-12):** sin DnD, activación solo por click; durante DnD, hover 0,5s + spinner en el box (click bypass).
 
 #### [NEW] src/components/PreviewTooltip.tsx
 - Contendrá el `PreviewTooltip`.

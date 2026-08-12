@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* Match app dark toggle (class on <html>), not OS prefers-color-scheme */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --color-surface-base: var(--surface-base);
@@ -9,15 +12,30 @@
   --color-border-lite: var(--border-lite);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
+
+  /* Light-mode accents: indigo utilities resolve to blue scale */
+  --color-indigo-50: #eff6ff;
+  --color-indigo-100: #dbeafe;
+  --color-indigo-200: #bfdbfe;
+  --color-indigo-300: #93c5fd;
+  --color-indigo-400: #60a5fa;
+  --color-indigo-500: #3b82f6;
+  --color-indigo-600: #2563eb;
+  --color-indigo-700: #1d4ed8;
+  --color-indigo-800: #1e40af;
+  --color-indigo-900: #1e3a8a;
+  --color-indigo-950: #172554;
 }
 
 :root {
-  --surface-base: #f8fafc;
+  --surface-base: #f4f4f5;
   --surface-card: #ffffff;
-  --surface-pill: #f1f5f9;
-  --border-lite: #e2e8f0;
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
+  --surface-pill: #e4e4e7;
+  --border-lite: #d4d4d8;
+  --text-primary: #000000;
+  --text-secondary: #52525b;
+  --accent: #2563eb;
+  --accent-soft: #dbeafe;
   color-scheme: light;
 }
 
@@ -28,6 +46,8 @@
   --border-lite: #334155;
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
+  --accent: #3b82f6;
+  --accent-soft: #1e3a8a;
   color-scheme: dark;
 }
 
@@ -40,7 +60,7 @@
     background: transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
+    background-color: #a1a1aa;
     border-radius: 20px;
   }
   .fallback-scroll::-webkit-scrollbar {
@@ -50,7 +70,7 @@
     background: transparent;
   }
   .fallback-scroll::-webkit-scrollbar-thumb {
-    background-color: #e2e8f0;
+    background-color: #d4d4d8;
     border-radius: 4px;
   }
   
@@ -64,8 +84,21 @@
     background: var(--surface-pill);
     border: 1px solid var(--border-lite);
     cursor: grab;
+    color: var(--text-primary);
   }
-  
+
+  .item-pill.is-selected {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 28%, transparent);
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .item-pill.is-selected .item-pill-label {
+    color: var(--text-primary);
+  }
+
   .item-pill:active {
     cursor: grabbing;
   }
