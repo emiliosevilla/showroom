@@ -25,13 +25,14 @@
   - `[x]` Pack lean: solo `dist/` + `electron/` (sin `node_modules` en el asar); deps de frontend en `devDependencies`.
   - `[x]` Limpieza: eliminados `patch.js`, `patch_out.js`, `metadata.json`, deps muertas (`@google/genai`, `express`, …).
   - `[x]` Scripts con `env -u ELECTRON_RUN_AS_NODE` (evita fallo en entornos Cursor).
-  - `[x]` Artefactos regenerados (2026-08-12, pack lean):
-    - macOS: `release/showroom-0.1.0-arm64.dmg`, `release/showroom-0.1.0-arm64-mac.zip`
-    - Windows x64: `release/showroom-0.1.0-win.zip`
-  - `[ ]` Firma macOS (Developer ID) + notarización.
+  - `[x]` Artefactos regenerados (2026-08-13, pack lean post Fase 6):
+    - macOS: `release/showroom-0.1.0-arm64.dmg`, `release/showroom-0.1.0-arm64-mac.zip` (~103MB)
+    - Windows x64: `release/showroom-0.1.0-win.zip` (~113MB; integridad ZIP OK)
+  - `[ ]` Firma macOS (Developer ID Application) + notarización — pack actual sin firmar (identidades disponibles no son Developer ID).
   - `[ ]` NSIS `.exe` (Wine o runner Windows).
-  - `[ ]` Icono de app propio.
-  - `[ ]` Smoke QA manual completo en `.app` / `.exe`.
+  - `[ ]` Icono de app propio (electron-builder avisó: default Electron icon).
+  - `[x]` Smoke automatizable (2026-08-13): `npm run lint` OK; `test:scan-limits` 5/5; binario `.app` arranca (`env -u ELECTRON_RUN_AS_NODE`); zip Windows `unzip -t` OK.
+  - `[ ]` Smoke QA manual UI (abrir carpeta, containers, preview, sesiones, búsqueda) en Finder / Windows.
 
 - `[x]` **Fase 6: Producto virtual seguro (2026-08)**
   - `[x]` Sin papelera / sin subcarpetas; contenedor **Otros** siempre presente.
