@@ -8,18 +8,20 @@ export interface FileEntry {
   /** Bytes; filled on hydrate or from FileList fallback. */
   size?: number;
   /**
-   * Birth/creation time. Not available via browser File API —
-   * reserved for Phase 5 NativeBridge.
+   * Birth/creation time. Filled by desktop NativeBridge / Node scan;
+   * not available via browser File API alone.
    */
   createdAt?: number;
   extension?: string;
   fileObject?: File;
   fileHandle?: any; // FileSystemFileHandle
+  /** Absolute filesystem path when running under Electron native scan. */
+  absolutePath?: string;
   /** True after ensureFileHydrated resolved content metadata. */
   hydrated?: boolean;
 }
 
-/** Lazily load File blob + size/lastModified from FileSystemFileHandle. */
+/** Lazily load File blob + size/lastModified from FileSystemFileHandle or NativeBridge. */
 export async function ensureFileHydrated(entry: FileEntry): Promise<FileEntry> {
   if (entry.kind !== 'file') return entry;
   if (entry.hydrated && entry.fileObject) return entry;
@@ -43,6 +45,34 @@ export async function ensureFileHydrated(entry: FileEntry): Promise<FileEntry> {
       };
     } catch (err) {
       console.warn(`Failed to hydrate file ${entry.path}:`, err);
+      return { ...entry, hydrated: true };
+    }
+  }
+  const native = typeof window !== 'undefined' ? window.__SHOWROOM_NATIVE__ : undefined;
+  if (native?.readFile) {
+    try {
+      const buffer = await native.readFile(entry.absolutePath || entry.path);
+      const file = new File([buffer], entry.name, {
+        lastModified: entry.lastModified || Date.now(),
+      });
+      let createdAt = entry.createdAt;
+      if (createdAt == null && native.getBirthTime) {
+        try {
+          createdAt = await native.getBirthTime(entry.absolutePath || entry.path);
+        } catch {
+          /* ignore */
+        }
+      }
+      return {
+        ...entry,
+        fileObject: file,
+        size: entry.size ?? file.size,
+        lastModified: entry.lastModified || file.lastModified,
+        createdAt,
+        hydrated: true,
+      };
+    } catch (err) {
+      console.warn(`Failed to hydrate native file ${entry.path}:`, err);
       return { ...entry, hydrated: true };
     }
   }

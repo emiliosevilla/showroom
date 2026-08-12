@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useLanguage } from './i18n/LanguageContext';
 import { useFileSystem } from './hooks/useFileSystem';
 import { useDragAndDrop } from './hooks/useDragAndDrop';
 import { setKey, getKey } from './utils/idb';
 import { classifyFiles, ClassificationResult } from './services/classifier';
-import { generateEnhancedHtmlString, getImagePreview } from './exportHtml';
-import { FolderSearch, Loader2, Download, Upload, FolderOpen, ArrowRight, Search, Filter, Moon, Sun, Share2, ArrowUpDown, Star, Trash2, RotateCcw, ChevronDown, ChevronRight, CheckSquare, Square, Plus, X, ArrowDownAZ, PieChart as PieChartIcon, Undo2, Redo2, Settings, Type, Image as ImageIcon, Video, Music, FileText, Archive, Code, Briefcase, Camera, Book, File, Globe, Key, Box, Heart, Zap, Shield, Database, Folder } from 'lucide-react';
+import { FolderSearch, Loader2, FolderOpen, ArrowRight, Search, Filter, Moon, Sun, ArrowUpDown, Star, Trash2, RotateCcw, ChevronDown, ChevronRight, CheckSquare, Square, Plus, X, PieChart as PieChartIcon, Undo2, Redo2, Settings, Shield, Globe, Monitor } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { 
   DndContext, 
   DragOverlay, 
-  closestCorners, 
   pointerWithin,
 } from '@dnd-kit/core';
 import { 
@@ -20,9 +17,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { motion, AnimatePresence } from 'motion/react';
-import JSZip from 'jszip';
 
-import { COLOR_VARIANTS, AVAILABLE_COLORS, AVAILABLE_ICONS, renderIcon } from './utils/theme';
+import { renderIcon } from './utils/theme';
 
 import { ContainerSettingsModal } from './components/Modals/ContainerSettingsModal';
 
@@ -32,8 +28,6 @@ import { FileItem } from './components/FileItem';
 
 import { ContainerColumn } from './components/ContainerColumn';
 
-import { PreviewTooltip } from './components/PreviewTooltip';
-
 import { SplitMasterItem } from './components/SplitMasterItem';
 import { FilePreviewPane } from './components/FilePreviewPane';
 import { FilePropertiesPanel } from './components/FilePropertiesPanel';
@@ -42,6 +36,51 @@ import { ensureFileHydrated } from './utils/fileSystem';
 import { isEmbeddedFrame } from './utils/embedContext';
 
 type FileSortMode = 'name_asc' | 'name_desc' | 'date' | 'size' | 'ext' | 'favorites';
+type FilterType = 'all' | 'favorites' | 'image' | 'document' | 'code' | 'multimedia' | 'compressed' | 'executable' | 'other';
+type GroupByMode = 'none' | 'extension' | 'container';
+
+const EXEC_EXTS = ['exe', 'msi', 'bat', 'sh', 'app', 'apk', 'bin'];
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'psd', 'ai', 'ico'];
+const DOC_EXTS = ['pdf', 'doc', 'docx', 'txt', 'md', 'xls', 'xlsx', 'csv'];
+const COMPRESSED_EXTS = ['zip', 'rar', '7z', 'tar', 'gz'];
+const MULTI_EXTS = ['mp3', 'mp4', 'wav', 'avi', 'mkv', 'mov', 'webm', 'ogg'];
+const CODE_EXTS = ['js', 'ts', 'html', 'css', 'json', 'py', 'java', 'cpp', 'c', 'tsx', 'jsx'];
+
+function matchesFilterType(
+  filePath: string,
+  fileEntry: { kind?: string; extension?: string } | undefined,
+  filterType: FilterType,
+  containerId: string,
+): boolean {
+  if (filterType === 'all') return true;
+  if (filterType === 'favorites') return localStorage.getItem(`favorite-${filePath}`) === 'true';
+  if (!fileEntry || fileEntry.kind === 'directory') return false;
+  const ext = (fileEntry.extension || '').toLowerCase();
+  if (filterType === 'executable') return EXEC_EXTS.includes(ext);
+  if (filterType === 'image') return IMAGE_EXTS.includes(ext);
+  if (filterType === 'document') return DOC_EXTS.includes(ext);
+  if (filterType === 'compressed') return COMPRESSED_EXTS.includes(ext);
+  if (filterType === 'multimedia') return MULTI_EXTS.includes(ext);
+  if (filterType === 'code') return CODE_EXTS.includes(ext);
+  if (filterType === 'other') {
+    if (containerId === 'otros') return true;
+    return !EXEC_EXTS.includes(ext) && !IMAGE_EXTS.includes(ext) && !DOC_EXTS.includes(ext)
+      && !COMPRESSED_EXTS.includes(ext) && !MULTI_EXTS.includes(ext) && !CODE_EXTS.includes(ext);
+  }
+  return true;
+}
+
+function matchesSearchTokens(
+  filePath: string,
+  fileEntry: { extension?: string } | undefined,
+  tokens: string[],
+): boolean {
+  if (tokens.length === 0) return true;
+  const name = filePath.split('/').pop() || filePath;
+  const ext = (fileEntry?.extension || '').toLowerCase();
+  const haystack = `${name} ${filePath} ${ext}`.toLowerCase();
+  return tokens.every(token => haystack.includes(token));
+}
 
 export default function App() {
   const { t, language, toggleLanguage } = useLanguage();
@@ -50,11 +89,11 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [groupBy, setGroupBy] = useState<GroupByMode>('none');
   const [expandedContainers, setExpandedContainers] = useState<Set<string>>(new Set());
   const [focusedContainerId, setFocusedContainerId] = useState<string | null>(null);
   const [customizeContainerId, setCustomizeContainerId] = useState<string | null>(null);
-  const [trashOriginalLocations, setTrashOriginalLocations] = useState<Record<string, string>>({}); // 'all', 'executable', 'directory', 'image', 'document'
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [activePreviewPath, setActivePreviewPath] = useState<string | null>(null);
   const [fileSortMode, setFileSortMode] = useState<FileSortMode>('favorites');
@@ -66,16 +105,10 @@ export default function App() {
   const focusedInputRef = useRef<HTMLInputElement>(null);
   type EditorSnapshot = {
     classification: ClassificationResult;
-    trashOriginalLocations: Record<string, string>;
   };
   const [history, setHistory] = useState<EditorSnapshot[]>([]);
   const [future, setFuture] = useState<EditorSnapshot[]>([]);
-  const trashLocRef = useRef<Record<string, string>>({});
   const [recentAction, setRecentAction] = useState<{ message: string, timestamp: number, type?: 'undo' | 'normal' } | null>(null);
-
-  useEffect(() => {
-    trashLocRef.current = trashOriginalLocations;
-  }, [trashOriginalLocations]);
 
   useEffect(() => {
     if (recentAction) {
@@ -88,6 +121,7 @@ export default function App() {
     step,
     folderName,
     dirHandle,
+    workspacePath,
     scannedFiles,
     setScannedFiles,
     errorMsg,
@@ -127,18 +161,33 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (step !== 'editor' || !classification || !dirHandle || !folderName) return;
+    if (step !== 'editor' || !classification || !folderName) return;
+    if (!dirHandle && !workspacePath) return;
 
     let cancelled = false;
     (async () => {
       try {
         const sessions = await getKey<any>('smartfolder_sessions');
         let currentSessions = Array.isArray(sessions) ? sessions : [];
-        currentSessions = currentSessions.filter((s: any) => s.folderName !== folderName);
+        const matchKey = (workspacePath || folderName).toLowerCase();
+        const prev = currentSessions.find(
+          (s: any) => (s.workspacePath || s.folderName || '').toLowerCase() === matchKey
+        );
+        currentSessions = currentSessions.filter(
+          (s: any) => (s.workspacePath || s.folderName || '').toLowerCase() !== matchKey
+        );
 
-        const newSession = { folderName, dirHandle, classification, timestamp: Date.now() };
+        const newSession: Record<string, unknown> = {
+          folderName,
+          classification,
+          timestamp: Date.now(),
+        };
+        if (dirHandle) newSession.dirHandle = dirHandle;
+        if (workspacePath) newSession.workspacePath = workspacePath;
+        else if (prev?.workspacePath) newSession.workspacePath = prev.workspacePath;
+
         currentSessions.unshift(newSession);
-        currentSessions = currentSessions.slice(0, 5);
+        currentSessions = currentSessions.slice(0, 10);
 
         await setKey('smartfolder_sessions', currentSessions);
         if (!cancelled) setSavedSessions(currentSessions);
@@ -150,7 +199,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [step, classification, dirHandle, folderName]);
+  }, [step, classification, dirHandle, workspacePath, folderName, t]);
 
   const commitClassificationChange = (
     updater: ClassificationResult | ((prev: ClassificationResult | null) => ClassificationResult | null),
@@ -159,10 +208,7 @@ export default function App() {
     setClassification(prev => {
       const nextState = typeof updater === 'function' ? updater(prev) : updater;
       if (prev && nextState && JSON.stringify(prev) !== JSON.stringify(nextState)) {
-        setHistory(h => [...h, {
-          classification: prev,
-          trashOriginalLocations: { ...trashLocRef.current },
-        }].slice(-30));
+        setHistory(h => [...h, { classification: prev }].slice(-30));
         setFuture([]);
         setIsDirty(true);
         if (actionDesc) {
@@ -188,7 +234,6 @@ export default function App() {
     setSelectedFiles,
     focusedContainerId,
     setFocusedContainerId,
-    setTrashOriginalLocations,
   });
 
   const handleUndo = React.useCallback(() => {
@@ -197,14 +242,10 @@ export default function App() {
     setHistory(h => h.slice(0, -1));
     setClassification(current => {
       if (current) {
-        setFuture(f => [{
-          classification: current,
-          trashOriginalLocations: { ...trashLocRef.current },
-        }, ...f]);
+        setFuture(f => [{ classification: current }, ...f]);
       }
       return previousSnapshot.classification;
     });
-    setTrashOriginalLocations(previousSnapshot.trashOriginalLocations);
     setRecentAction({ message: t('action_undone'), timestamp: Date.now(), type: 'undo' });
   }, [history, t]);
 
@@ -214,14 +255,10 @@ export default function App() {
     setFuture(f => f.slice(1));
     setClassification(current => {
       if (current) {
-        setHistory(h => [...h, {
-          classification: current,
-          trashOriginalLocations: { ...trashLocRef.current },
-        }].slice(-30));
+        setHistory(h => [...h, { classification: current }].slice(-30));
       }
       return nextSnapshot.classification;
     });
-    setTrashOriginalLocations(nextSnapshot.trashOriginalLocations);
     setRecentAction({ message: t('action_redone'), timestamp: Date.now(), type: 'normal' });
   }, [future, t]);
 
@@ -382,59 +419,6 @@ export default function App() {
     setFavoritesTick(prev => prev + 1);
   };
 
-  const moveFilesToTrash = (paths: string[]) => {
-    if (paths.length === 0) return;
-    commitClassificationChange(prev => {
-      if (!prev) return prev;
-      const newContainers = prev.containers.map(c => {
-        if (c.id === 'trash') {
-          const merged = [...c.files];
-          paths.forEach(p => { if (!merged.includes(p)) merged.push(p); });
-          return { ...c, files: merged };
-        }
-        return { ...c, files: c.files.filter(f => !paths.includes(f)) };
-      });
-      return { ...prev, containers: newContainers };
-    }, `${paths.length} ${t('to_trash')}`);
-    setTrashOriginalLocations(prev => {
-      const next = { ...prev };
-      paths.forEach(p => {
-        const origin = classification?.containers.find(c => c.id !== 'trash' && c.files.includes(p));
-        if (origin) next[p] = origin.id;
-      });
-      return next;
-    });
-    setSelectedFiles(prev => {
-      const next = new Set(prev);
-      paths.forEach(p => next.delete(p));
-      return next;
-    });
-    if (activePreviewPath && paths.includes(activePreviewPath)) setActivePreviewPath(null);
-  };
-
-  const zipSelectedPaths = async (paths: string[]) => {
-    const zip = new JSZip();
-    for (const path of paths) {
-      let entry = scannedFiles.find(f => f.path === path);
-      if (!entry) continue;
-      if (!entry.fileObject) {
-        entry = await ensureFileHydrated(entry);
-        setScannedFiles(prev => prev.map(f => f.path === entry!.path ? { ...f, ...entry! } : f));
-      }
-      if (entry.fileObject) zip.file(entry.name, entry.fileObject);
-    }
-    const blob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `showroom_selection.zip`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setRecentAction({ message: t('zip_exported'), timestamp: Date.now(), type: 'normal' });
-  };
-
   const sortFilesForDisplay = (files: string[]): string[] => {
     const basename = (p: string) => p.split('/').pop() || p;
     return [...files].sort((a, b) => {
@@ -476,38 +460,36 @@ export default function App() {
     }, `Contenedor actualizado`);
   };
 
-  const handleDeleteContainer = (id: string, filesToTrash: string[]) => {
+  const handleDeleteContainer = (id: string, filesToMove: string[]) => {
+    if (id === 'otros') return;
     commitClassificationChange(prev => {
       if (!prev) return prev;
       let newContainers = prev.containers.filter(c => c.id !== id);
-      
-      const trashIdx = newContainers.findIndex(c => c.id === 'trash');
-      if (trashIdx !== -1 && filesToTrash.length > 0) {
-        newContainers[trashIdx] = {
-          ...newContainers[trashIdx],
-          files: [...newContainers[trashIdx].files, ...filesToTrash]
-        };
-      }
-      
-      return { ...prev, containers: newContainers };
-    }, filesToTrash.length > 0 ? `${t("container_deleted")} y ${filesToTrash.length} ${t("files")} ${t("to_trash")}` : t('container_deleted'));
 
-    if (filesToTrash.length > 0) {
-      setTrashOriginalLocations(prev => {
-         const next = { ...prev };
-         filesToTrash.forEach(f => {
-           // We can't easily jump back to a deleted container, so let's default to no location
-           delete next[f];
-         });
-         return next;
-      });
-    }
+      if (filesToMove.length > 0) {
+        let otrosIdx = newContainers.findIndex(c => c.id === 'otros');
+        if (otrosIdx === -1) {
+          newContainers.push({ id: 'otros', name: 'cat_misc', files: [] });
+          otrosIdx = newContainers.length - 1;
+        }
+        const merged = [...newContainers[otrosIdx].files];
+        filesToMove.forEach(f => {
+          if (!merged.includes(f)) merged.push(f);
+        });
+        newContainers[otrosIdx] = { ...newContainers[otrosIdx], files: merged };
+      }
+
+      return { ...prev, containers: newContainers };
+    }, filesToMove.length > 0
+      ? `${t('container_deleted')} — ${filesToMove.length} ${t('files')} → ${t('cat_misc')}`
+      : t('container_deleted'));
 
     setExpandedContainers(prev => {
       const next = new Set(prev);
       next.delete(id);
       return next;
     });
+    if (focusedContainerId === id) setFocusedContainerId(null);
   };
 
   const handleSelectAll = (filesToSelect: string[]) => {
@@ -524,65 +506,6 @@ export default function App() {
       filesToDeselect.forEach(f => next.delete(f));
       return next;
     });
-  };
-
-  const handleTrashAction = (action: 'delete' | 'restore', filesToProcess: string[]) => {
-    commitClassificationChange(prev => {
-      if (!prev) return prev;
-      let newContainers = [...prev.containers];
-      const trashIndex = newContainers.findIndex(c => c.id === 'trash');
-      if (trashIndex === -1) return prev;
-
-      if (action === 'delete') {
-        newContainers[trashIndex] = {
-          ...newContainers[trashIndex],
-          files: newContainers[trashIndex].files.filter(f => !filesToProcess.includes(f))
-        };
-      } else if (action === 'restore') {
-        let currentTrashFiles = [...newContainers[trashIndex].files];
-        filesToProcess.forEach(filePaths => {
-          const originalContainerId = trashOriginalLocations[filePaths];
-          const targetId = originalContainerId || 'otros'; // fallback original or 'otros'
-          let targetIndex = newContainers.findIndex(c => c.id === targetId);
-          if (targetIndex === -1) {
-             const otrosContainer = { id: 'otros', name: t('other'), files: [] };
-             const tIdx = newContainers.findIndex(c => c.id === 'trash');
-             if (tIdx !== -1) {
-                newContainers.splice(tIdx, 0, otrosContainer);
-                targetIndex = tIdx;
-             } else {
-                newContainers.push(otrosContainer);
-                targetIndex = newContainers.length - 1;
-             }
-          }
-          newContainers[targetIndex] = {
-            ...newContainers[targetIndex],
-            files: [...newContainers[targetIndex].files, filePaths]
-          };
-          currentTrashFiles = currentTrashFiles.filter(f => f !== filePaths);
-        });
-        newContainers[trashIndex] = {
-          ...newContainers[trashIndex],
-          files: currentTrashFiles
-        };
-      }
-      return { containers: newContainers };
-    }, action === 'delete' ? `Eliminado(s) ${filesToProcess.length} archivo(s)` : `Restaurado(s) ${filesToProcess.length} archivo(s)`);
-    
-    if (action === 'delete') {
-       setScannedFiles(prev => prev.filter(f => !filesToProcess.includes(f.path)));
-       setTrashOriginalLocations(prev => {
-         const next = { ...prev };
-         filesToProcess.forEach(f => delete next[f]);
-         return next;
-       });
-    } else if (action === 'restore') {
-       setTrashOriginalLocations(prev => {
-         const next = { ...prev };
-         filesToProcess.forEach(f => delete next[f]);
-         return next;
-       });
-    }
   };
 
   const toggleContainerExpand = (id: string) => {
@@ -612,10 +535,9 @@ export default function App() {
       const newId = `custom-${Date.now()}`;
       const newContainer = { id: newId, name: t('new_container_name'), files: [] };
       const newContainers = [...prev.containers];
-      // Insert before trash if exists
-      const trashIdx = newContainers.findIndex(c => c.id === 'trash');
-      if (trashIdx !== -1) {
-        newContainers.splice(trashIdx, 0, newContainer);
+      const otrosIdx = newContainers.findIndex(c => c.id === 'otros');
+      if (otrosIdx !== -1) {
+        newContainers.splice(otrosIdx, 0, newContainer);
       } else {
         newContainers.push(newContainer);
       }
@@ -643,82 +565,6 @@ export default function App() {
     }, t('container_sorted'));
   };
 
-  const handleExport = async () => {
-    if (!classification) return;
-    const htmlStr = generateEnhancedHtmlString(folderName, classification, t);
-    
-    try {
-      if (dirHandle) {
-        // Tratar de guardar directamente en la carpeta para un funcionamiento perfecto
-        const fileHandle = await dirHandle.getFileHandle(`Vista_Mejorada_${folderName}.html`, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(htmlStr);
-        await writable.close();
-        
-        alert(t('export_success_long').replace('{0}', folderName).replace('{1}', folderName));
-        return; // Salir si tuvo éxito
-      }
-    } catch (e) {
-      console.log(t('save_fallback'), e);
-    }
-    
-    // Fallback: Descarga estándar del navegador
-    const blob = new Blob([htmlStr], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Vista_Mejorada_${folderName}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    alert(`✅ Archivo descargado.\n\nIMPORTANTE: Para que los enlaces a tus documentos funcionen correctamente, debes mover este archivo descargado dentro de tu carpeta "${folderName}" local.`);
-  };
-
-  const [isExportingZip, setIsExportingZip] = useState(false);
-
-  const handleExportZip = async () => {
-    if (!classification) return;
-    setIsExportingZip(true);
-    try {
-      const zip = new JSZip();
-      
-      classification.containers.forEach(container => {
-        if (container.id === 'trash') return; // Do not export trash
-
-        const folder = zip.folder(container.name);
-        if (!folder) return;
-
-        container.files.forEach(fileId => {
-          const fileEntry = scannedFiles.find(f => f.path === fileId);
-          if (fileEntry && fileEntry.fileObject) {
-            folder.file(fileEntry.name, fileEntry.fileObject);
-          }
-        });
-      });
-
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(zipBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${folderName}_organizado.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      setRecentAction({ message: t('zip_exported'), timestamp: Date.now(), type: 'normal' });
-    } catch (e) {
-      console.error(t('zip_error'), e);
-      alert(t('zip_error_generic'));
-    } finally {
-      setIsExportingZip(false);
-    }
-  };
-
-
   // Find the active file path for Overlay
   const activeFile = activeId ? activeId : '';
   const activeName = activeFile.split('/').pop();
@@ -729,7 +575,6 @@ export default function App() {
     
     const counts: Record<string, number> = {};
     classification.containers.forEach(c => {
-      if (c.id === 'trash') return;
       c.files.forEach(f => {
         const entry = scannedFiles.find(sf => sf.path === f);
         const ext = (entry?.extension || 'otro').toLowerCase();
@@ -754,40 +599,18 @@ export default function App() {
   const filteredClassification = useMemo(() => {
     if (!classification) return null;
 
-    const term = searchTerm.toLowerCase();
+    const tokens = searchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const isFiltering = tokens.length > 0 || filterType !== 'all';
 
     return {
       containers: classification.containers.map(c => {
-        let filteredFiles = c.files;
-        
-        if (searchTerm || filterType !== 'all') {
-          filteredFiles = c.files.filter(filePath => {
-            // Find matching FileEntry
-            const fileEntry = scannedFiles.find(sf => sf.path === filePath);
-            
-            if (searchTerm) {
-              const matchesSearch = filePath.toLowerCase().includes(term);
-              if (!matchesSearch) return false;
-            }
+        let filteredFiles = c.files.filter(filePath => {
+          const fileEntry = scannedFiles.find(sf => sf.path === filePath);
+          if (!matchesSearchTokens(filePath, fileEntry, tokens)) return false;
+          if (!matchesFilterType(filePath, fileEntry, filterType, c.id)) return false;
+          return true;
+        });
 
-            if (filterType !== 'all') {
-              if (!fileEntry) return false; // Safety fallback
-              
-              if (filterType === 'directory' && fileEntry.kind !== 'directory') return false;
-              
-              if (fileEntry.kind === 'file') {
-                const ext = fileEntry.extension || '';
-                if (filterType === 'executable' && !['exe', 'app', 'bat', 'sh'].includes(ext)) return false;
-                if (filterType === 'image' && !['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) return false;
-                if (filterType === 'document' && !['pdf', 'doc', 'docx', 'txt', 'md'].includes(ext)) return false;
-              }
-            }
-
-            return true;
-          });
-        }
-        
-        // Sort files to put favorites at the top
         const sortedFiles = [...filteredFiles].sort((a, b) => {
           const aFav = localStorage.getItem(`favorite-${a}`) === 'true';
           const bFav = localStorage.getItem(`favorite-${b}`) === 'true';
@@ -797,9 +620,9 @@ export default function App() {
         });
 
         return { ...c, files: sortedFiles };
-      })
+      }).filter(c => !isFiltering || c.files.length > 0 || groupBy === 'container')
     };
-  }, [classification, scannedFiles, searchTerm, filterType, favoritesTick]);
+  }, [classification, scannedFiles, searchTerm, filterType, favoritesTick, groupBy]);
 
   return (
     <div className="flex h-screen w-full flex-col bg-surface-base font-sans text-text-primary transition-colors duration-200">
@@ -928,22 +751,6 @@ export default function App() {
                 </button>
               </div>
 
-              <button 
-                onClick={handleExport}
-                className="flex items-center gap-1.5 rounded-lg bg-surface-card border border-border-lite px-2.5 py-1.5 text-xs font-bold text-text-primary shadow-sm hover:opacity-90 transition-opacity shrink-0"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">{t("export_space")}</span>
-              </button>
-              <button 
-                onClick={handleExportZip}
-                disabled={isExportingZip}
-                className="flex items-center gap-1.5 rounded-lg bg-indigo-600 text-white border border-indigo-700 px-2.5 py-1.5 text-xs font-bold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
-              >
-                {isExportingZip ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                <span className="hidden lg:inline">{isExportingZip ? t('exporting') : t('export_zip_btn')}</span>
-              </button>
-
               <div className="hidden sm:block h-5 w-px bg-border-lite shrink-0" />
 
               <div className="flex items-center gap-1 shrink-0">
@@ -978,15 +785,36 @@ export default function App() {
                 <Filter className="w-3.5 h-3.5 text-text-secondary absolute left-2 top-1/2 -translate-y-1/2" />
                 <select
                   value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
+                  onChange={(e) => setFilterType(e.target.value as FilterType)}
                   className="appearance-none bg-surface-card border border-border-lite pl-7 pr-6 py-1.5 rounded-lg text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                   aria-label={t("filter_by_type")}
                 >
                   <option value="all">{t("types_all")}</option>
-                  <option value="executable">{t("types_executables")}</option>
-                  <option value="directory">{t("types_subfolders")}</option>
+                  <option value="favorites">{t("types_favorites")}</option>
                   <option value="image">{t("types_images")}</option>
                   <option value="document">{t("types_documents")}</option>
+                  <option value="code">{t("types_code")}</option>
+                  <option value="multimedia">{t("types_multimedia")}</option>
+                  <option value="compressed">{t("types_compressed")}</option>
+                  <option value="executable">{t("types_executables")}</option>
+                  <option value="other">{t("types_other")}</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-text-secondary">
+                  <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+              </div>
+
+              <div className="relative shrink-0">
+                <ArrowUpDown className="w-3.5 h-3.5 text-text-secondary absolute left-2 top-1/2 -translate-y-1/2" />
+                <select
+                  value={groupBy}
+                  onChange={(e) => setGroupBy(e.target.value as GroupByMode)}
+                  className="appearance-none bg-surface-card border border-border-lite pl-7 pr-6 py-1.5 rounded-lg text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  aria-label={t("group_by")}
+                >
+                  <option value="none">{t("group_by_none")}</option>
+                  <option value="extension">{t("group_by_extension")}</option>
+                  <option value="container">{t("group_by_container")}</option>
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-text-secondary">
                   <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
@@ -1021,7 +849,21 @@ export default function App() {
             >
               <div className="text-center mb-10">
                 <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-text-primary">{t("hero_title")}</h2>
-                <p className="text-text-secondary text-lg">{t("hero_subtitle")}</p>
+                <p className="text-text-secondary text-lg mb-6">{t("hero_subtitle")}</p>
+                <ul className="text-left text-sm text-text-secondary space-y-2 max-w-md mx-auto">
+                  <li className="flex items-start gap-2">
+                    <Monitor className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" />
+                    <span>{t("hero_bullet_desktop")}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Shield className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" />
+                    <span>{t("hero_bullet_local")}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Globe className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" />
+                    <span>{t("hero_bullet_safe")}</span>
+                  </li>
+                </ul>
               </div>
 
               <div className="space-y-6">
@@ -1044,7 +886,9 @@ export default function App() {
                   {!isEmbeddedFrame() && savedSessions.length > 0 && (
                     <div className="space-y-2 mt-4 pt-4 border-t border-indigo-500/10">
                       <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">{t("recent_sessions")}</p>
-                      {savedSessions.map((session, index) => (
+                      {[...savedSessions]
+                        .sort((a, b) => (a.folderName || '').localeCompare(b.folderName || '', undefined, { sensitivity: 'base' }))
+                        .map((session, index) => (
                         <button 
                           key={index}
                           onClick={() => handleResumeSession(session)}
@@ -1173,7 +1017,6 @@ export default function App() {
                                     color={container.color}
                                     icon={container.icon}
                                     fileCount={container.files.length}
-                                    isTrash={container.id === 'trash'}
                                     isFocused={isActive}
                                     isFileDragActive={activeId !== null && !draggingContainer}
                                     onHover={() => setFocusedContainerId(container.id)}
@@ -1210,11 +1053,10 @@ export default function App() {
                                     >
                                        <DetailDroppableArea 
                                          containerId={focusedContainer.id} 
-                                         isTrash={focusedContainer.id === 'trash'}
                                          headerRenderer={(isOver) => (
-                                           <div className={`px-6 py-4 border-b border-border-lite shadow-sm z-10 flex items-center justify-between transition-colors ${isOver ? (focusedContainer.id === 'trash' ? 'bg-red-100 dark:bg-red-900/40' : 'bg-emerald-100 dark:bg-emerald-900/40') : 'bg-surface-base'}`}>
+                                           <div className={`px-6 py-4 border-b border-border-lite shadow-sm z-10 flex items-center justify-between transition-colors ${isOver ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-surface-base'}`}>
                                              <h3 className="font-bold text-xl text-text-primary flex items-center gap-2">
-                                                {focusedContainer.id === 'trash' ? <Trash2 className="w-6 h-6 text-red-500" /> : renderIcon(focusedContainer.icon, focusedContainer.color, 'w-6 h-6')}
+                                                {renderIcon(focusedContainer.icon, focusedContainer.color, 'w-6 h-6')}
                                                 {editingFocusedContainerId === focusedContainer.id ? (
                                                   <input
                                                     ref={focusedInputRef}
@@ -1253,12 +1095,10 @@ export default function App() {
                                                   <span 
                                                     className="cursor-text hover:bg-black/5 dark:hover:bg-white/5 py-0.5 px-1 rounded -ml-1 transition-colors"
                                                     onClick={() => {
-                                                      if (focusedContainer.id !== 'trash') {
-                                                        setFocusedContainerEditName(focusedContainer.name);
-                                                        setEditingFocusedContainerId(focusedContainer.id);
-                                                      }
+                                                      setFocusedContainerEditName(focusedContainer.name);
+                                                      setEditingFocusedContainerId(focusedContainer.id);
                                                     }}
-                                                    title={focusedContainer.id !== 'trash' ? t("click_to_rename") : focusedContainer.name}
+                                                    title={t("click_to_rename")}
                                                   >
                                                     {focusedContainer.name}
                                                   </span>
@@ -1276,65 +1116,46 @@ export default function App() {
                                                     <span className="text-xs font-semibold text-text-secondary">{t("all")}</span>
                                                   </button>
                                                 )}
-                                                {focusedContainer.id !== 'trash' && (
-                                                  <button
-                                                    onClick={() => setCustomizeContainerId(focusedContainer.id)}
-                                                    className="p-2 bg-black/5 dark:bg-white/5 rounded-lg hover:bg-black/10 transition-colors flex items-center gap-1"
-                                                    title={t("configure")}
-                                                    aria-label={t("configure")}
-                                                  >
-                                                    <Settings className="w-4 h-4 text-text-secondary" />
-                                                    <span className="text-xs font-semibold text-text-secondary hidden sm:inline">{t("configure")}</span>
-                                                  </button>
-                                                )}
-                                                {focusedContainer.id !== 'trash' && (
+                                                <button
+                                                  onClick={() => setCustomizeContainerId(focusedContainer.id)}
+                                                  className="p-2 bg-black/5 dark:bg-white/5 rounded-lg hover:bg-black/10 transition-colors flex items-center gap-1"
+                                                  title={t("configure")}
+                                                  aria-label={t("configure")}
+                                                >
+                                                  <Settings className="w-4 h-4 text-text-secondary" />
+                                                  <span className="text-xs font-semibold text-text-secondary hidden sm:inline">{t("configure")}</span>
+                                                </button>
+                                                <button onClick={() => {
+                                                  setFocusedContainerEditName(focusedContainer.name);
+                                                  setEditingFocusedContainerId(focusedContainer.id);
+                                                }} className="p-2 bg-black/5 dark:bg-white/5 rounded-lg hover:bg-black/10 transition-colors" title={t("rename_container")}>
+                                                  <span className="text-xs font-semibold text-text-secondary">{t("rename")}</span>
+                                                </button>
+                                                {focusedContainer.id.startsWith('custom-') && (
                                                   <button onClick={() => {
-                                                    setFocusedContainerEditName(focusedContainer.name);
-                                                    setEditingFocusedContainerId(focusedContainer.id);
-                                                  }} className="p-2 bg-black/5 dark:bg-white/5 rounded-lg hover:bg-black/10 transition-colors" title={t("rename_container")}>
-                                                    <span className="text-xs font-semibold text-text-secondary">{t("rename")}</span>
-                                                  </button>
-                                                )}
-                                                {focusedContainer.id.startsWith('custom-') && focusedContainer.files.length === 0 && (
-                                                  <button onClick={() => {
-                                                    requireConfirm('¿Eliminar contenedor?', () => handleDeleteContainer(focusedContainer.id, focusedContainer.files));
+                                                    requireConfirm(t('delete_container_q') || '¿Eliminar contenedor?', () => handleDeleteContainer(focusedContainer.id, focusedContainer.files));
                                                   }} className="p-2 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 transition-colors" title={t("delete_container")}>
                                                     <Trash2 className="w-4 h-4" />
                                                   </button>
                                                 )}
-                                                {focusedContainer.id === 'trash' && focusedContainer.files.length > 0 && (() => {
-                                                   const selectedInTrash = focusedContainer.files.filter(f => selectedFiles.has(f));
-                                                   if (selectedInTrash.length > 0) {
-                                                      return (
-                                                        <div className="flex items-center gap-2">
-                                                          <button onClick={() => handleTrashAction('restore', selectedInTrash)} className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/60 rounded-lg transition-colors text-xs font-bold flex items-center gap-1 shadow-sm" title={t("restore_selected")}>
-                                                            <RotateCcw className="w-4 h-4" />
-                                                            Restaurar ({selectedInTrash.length})
-                                                          </button>
-                                                          <button onClick={() => {
-                                                            requireConfirm(`¿Eliminar permanentemente ${selectedInTrash.length} archivo(s)?`, () => handleTrashAction('delete', selectedInTrash));
-                                                          }} className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-500/20 dark:bg-red-900/40 dark:hover:bg-red-900/60 rounded-lg transition-colors text-xs font-bold flex items-center gap-1 shadow-sm" title={t("delete_selected_short")}>
-                                                            <Trash2 className="w-4 h-4" />
-                                                            Eliminar ({selectedInTrash.length})
-                                                          </button>
-                                                        </div>
-                                                      );
-                                                   }
-                                                   return (
-                                                     <button onClick={() => {
-                                                       requireConfirm('¿Vaciar papelera permanentemente?', () => handleTrashAction('delete', focusedContainer.files));
-                                                     }} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs font-bold flex items-center justify-center gap-1 shadow-sm" title={t("empty_trash_action")}>
-                                                       <Trash2 className="w-4 h-4 mr-1" />
-                                                       Vaciar Todo
-                                                     </button>
-                                                   );
-                                                })()}
                                              </div>
                                            </div>
                                          )}
                                        >
                                           {(() => {
                                             const sortedFiles = sortFilesForDisplay(focusedContainer.files);
+                                            const extensionGroups = groupBy === 'extension'
+                                              ? (() => {
+                                                  const map = new Map<string, string[]>();
+                                                  sortedFiles.forEach(f => {
+                                                    const entry = scannedFiles.find(sf => sf.path === f);
+                                                    const ext = (entry?.extension || '—').toLowerCase() || '—';
+                                                    if (!map.has(ext)) map.set(ext, []);
+                                                    map.get(ext)!.push(f);
+                                                  });
+                                                  return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+                                                })()
+                                              : null;
                                             const previewEntry = activePreviewPath
                                               ? scannedFiles.find(sf => sf.path === activePreviewPath) || null
                                               : null;
@@ -1365,7 +1186,31 @@ export default function App() {
                                                   <div className="flex-1 overflow-y-auto custom-scrollbar p-3 min-h-0">
                                                     <SortableContext items={sortedFiles} strategy={verticalListSortingStrategy}>
                                                       <div className="flex flex-col gap-2 pb-8" data-files-grid="true">
-                                                        {sortedFiles.map((file, fileIdx) => (
+                                                        {extensionGroups ? extensionGroups.map(([ext, groupFiles]) => (
+                                                          <div key={ext} className="flex flex-col gap-1.5">
+                                                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary px-1 sticky top-0 bg-surface-base/90 py-1">
+                                                              .{ext} <span className="font-mono font-normal opacity-70">({groupFiles.length})</span>
+                                                            </p>
+                                                            {groupFiles.map((file, fileIdx) => (
+                                                              <FileItem
+                                                                key={file}
+                                                                id={file}
+                                                                index={fileIdx}
+                                                                file={file}
+                                                                containerId={focusedContainer.id}
+                                                                fileEntry={scannedFiles.find(sf => sf.path === file)}
+                                                                isSelected={selectedFiles.has(file)}
+                                                                isActivePreview={activePreviewPath === file}
+                                                                isGroupDragging={activeId !== null && selectedFiles.has(activeId) && selectedFiles.has(file)}
+                                                                onClick={handleFileClick}
+                                                                onFavoriteToggle={handleFavoriteToggle}
+                                                                onDoubleClick={handleFileDoubleClick}
+                                                                dropFeedback={fileDropFeedback[file]}
+                                                                compact
+                                                              />
+                                                            ))}
+                                                          </div>
+                                                        )) : sortedFiles.map((file, fileIdx) => (
                                                           <FileItem
                                                             key={file}
                                                             id={file}
@@ -1412,8 +1257,6 @@ export default function App() {
                                                         else localStorage.setItem(key, 'true');
                                                         handleFavoriteToggle();
                                                       },
-                                                      moveToTrash: moveFilesToTrash,
-                                                      zipPaths: zipSelectedPaths,
                                                       showToast: (msg) => setRecentAction({ message: msg, timestamp: Date.now(), type: 'normal' }),
                                                     }}
                                                   />
@@ -1450,8 +1293,6 @@ export default function App() {
                                 onCustomizeContainer={setCustomizeContainerId}
                                 isExpanded={isExpanded}
                                 onToggleExpand={() => toggleContainerExpand(container.id)}
-                                isTrash={container.id === 'trash'}
-                                onTrashAction={handleTrashAction}
                                 onSort={sortContainer}
                                 onDeleteContainer={handleDeleteContainer}
                                 selectedFiles={selectedFiles}

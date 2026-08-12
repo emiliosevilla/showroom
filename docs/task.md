@@ -8,39 +8,35 @@
   - `[x]` **Manejo de Errores UI:** Capturar `LIMIT_EXCEEDED` y `AbortError` en `App.tsx` y mostrar mensajes descriptivos al usuario, impidiendo la carga.
 
 - `[x]` **Fase 2: Internacionalización (i18n) (Completado)**
-  - `[x]` Identificar textos hardcodeados en `App.tsx` (ej. "Apariencia del Contenedor", "Cancelar", "Guardar Cambios").
-  - `[x]` Añadir nuevas claves a los diccionarios en `src/i18n/`.
-  - `[x]` Reemplazar textos estáticos por `t('clave')`.
+  - `[x]` Identificar textos hardcodeados en `App.tsx`.
+  - `[x]` Añadir claves a `src/i18n/` y reemplazar por `t('clave')`.
 
 - `[x]` **Fase 3: Refactorización Arquitectónica de App.tsx (Completado)**
-  - `[x]` Crear `/src/components/FileItem.tsx` y migrar código.
-  - `[x]` Crear `/src/components/ContainerColumn.tsx` y migrar código.
-  - `[x]` Crear `/src/components/Modals/` (`FilePreviewModal.tsx`, `ContainerSettingsModal.tsx`).
-  - `[x]` Crear `/src/hooks/useDragAndDrop.ts` para lógica de `@dnd-kit`.
-  - `[x]` Crear `/src/hooks/useFileSystem.ts` para lógica de escaneo y estado de archivos.
-  - `[x]` Limpiar y ensamblar `App.tsx` usando los nuevos componentes y hooks.
+  - `[x]` Componentes (`FileItem`, `ContainerColumn`, Modals), hooks (`useDragAndDrop`, `useFileSystem`).
 
 - `[x]` **Fase 4: Verificación y UX editor**
-  - `[x]` Puerta automatizada: `npm run build` y `npm run lint` pasan (también tras QA fixes en `dev`, 2026-08-12).
-  - `[x]` QA manual local (Chrome/Edge): DnD, Cambiar carpeta, sesiones, modal de apariencia (fixes en `7d81e63`).
-  - `[x]` Límites de escaneo: puerta automatizada `npm run test:scan-limits` (100 carpetas / 1000 archivos → `LIMIT_EXCEEDED`).
-  - `[x]` UX sidebar (vista Total/grid): click activa contenedor; durante DnD, hover 0,5s + spinner (click bypass) (2026-08-12).
-  - `[x]` Vista **Total** (`viewMode === 'grid'`): split lista 1 col + ordenación | preview + propiedades + menú de acciones (`FilePreviewPane`, `FilePropertiesPanel`, `FileActionMenu`).
-  - `[x]` Vista **Individual** (`viewMode === 'columns'`): columnas de contenedores (sin split).
-  - `[x]` Eliminada vista tabla (`ListViewTable`); quitar toggle grid/list de cabecera.
-  - `[x]` Hidratación lazy `ensureFileHydrated` (`fileHandle.getFile()`) al seleccionar archivo; `size` / `lastModified`; `createdAt` solo vía bridge nativo (Fase 5).
-  - `[x]` Tooltips accesibles (`src/components/Tooltip.tsx`) en controles de icono.
-  - `[x]` Capa `NativeBridge` / `ActionId` en `src/platform/` (browser ahora; hooks listos para escritorio).
-  - `[x]` Footer de crédito solo en pantalla de bienvenida (más espacio en el editor).
-  - `[x]` README alineado con el estado actual (vistas Total/Individual, acciones, tooltips, scripts).
-  - `[ ]` Smoke de la build empaquetada (cuando exista el ejecutable — Fase 5).
+  - `[x]` `npm run build` / `lint` / `test:scan-limits`.
+  - `[x]` Vista Total (split) + Individual (columns); tooltips; NativeBridge API; sin vista tabla.
+  - `[x]` Footer solo en bienvenida.
 
-- `[ ]` **Fase 5: Distribución como ejecutable (aplazado — no ahora)**
-  - Trabajo grande aplazado a propósito; no bloquea el cierre de Fase 4.
-  - `[ ]` Elegir stack de empaquetado (p. ej. Electron, Tauri u otra opción).
-  - `[ ]` Configurar build de escritorio a partir del frontend Vite/React.
-  - `[ ]` Generar instalable/ejecutable para macOS (y otras plataformas si aplica).
-  - `[ ]` Smoke del ejecutable (abrir app, seleccionar carpeta, DnD básico, export).
-  - `[ ]` **Conectar NativeBridge:** asignar `window.__SHOWROOM_NATIVE__` con `revealInFolder`, `openWith`, `getBirthTime`, `compressWithSystem`. El menú de acciones ya usa los mismos `ActionId` (`src/platform/fileActions.ts`, `nativeBridge.ts`); acciones nativas hoy aparecen deshabilitadas con tooltip “Disponible en la app de escritorio”.
-  - `[ ]` Rellenar `FileEntry.createdAt` vía bridge nativo (no disponible en File API del navegador).
-  - Nota: **no** es una app web desplegada; `prod` en git es la rama de release del código, no un hosting Vercel/URL pública.
+- `[x]` **Fase 5: Distribución como ejecutable (Electron)**
+  - `[x]` Stack: Electron 37 + electron-builder.
+  - `[x]` Shell + NativeBridge (`electron/main.cjs`, `preload.cjs`).
+  - `[x]` Pack lean: solo `dist/` + `electron/` (sin `node_modules` en el asar); deps de frontend en `devDependencies`.
+  - `[x]` Limpieza: eliminados `patch.js`, `patch_out.js`, `metadata.json`, deps muertas (`@google/genai`, `express`, …).
+  - `[x]` Scripts con `env -u ELECTRON_RUN_AS_NODE` (evita fallo en entornos Cursor).
+  - `[x]` Artefactos regenerados (2026-08-12, pack lean):
+    - macOS: `release/showroom-0.1.0-arm64.dmg`, `release/showroom-0.1.0-arm64-mac.zip`
+    - Windows x64: `release/showroom-0.1.0-win.zip`
+  - `[ ]` Firma macOS (Developer ID) + notarización.
+  - `[ ]` NSIS `.exe` (Wine o runner Windows).
+  - `[ ]` Icono de app propio.
+  - `[ ]` Smoke QA manual completo en `.app` / `.exe`.
+
+- `[x]` **Fase 6: Producto virtual seguro (2026-08)**
+  - `[x]` Sin papelera / sin subcarpetas; contenedor **Otros** siempre presente.
+  - `[x]` Sin exportación ZIP ni galería HTML; sin APIs nativas de compresión.
+  - `[x]` Sin acciones destructivas en menús / bridges (no delete / trash en disco).
+  - `[x]` Sesiones: últimas 10 carpetas, listado A–Z en inicio; persistencia de containers.
+  - `[x]` Búsqueda con tokens + filtros + agrupar por extensión/contenedor.
+  - `[x]` Copy desktop: privado + seguro; LICENSE MIT; eliminado MAINTAINER-GUIDE.

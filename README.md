@@ -1,74 +1,73 @@
 # showroom
 
-Local folder organizer that runs 100% in the browser. `showroom` scans a folder on your computer, automatically classifies its files into categories ("containers") and lets you reorganize them with drag & drop before exporting them to a ZIP, or generating a self-contained HTML gallery for sharing.
+Espacio virtual para organizar carpetas locales. Corre 100% en tu máquina (navegador o app de escritorio Electron): escanea una carpeta, clasifica archivos en contenedores semánticos y te deja reorganizarlos con drag & drop **sin tocar el disco**.
 
-There is no backend or AI: all processing happens on the client and no file leaves your computer unless you explicitly export it.
+No hay backend: nada sale de tu equipo. En escritorio puedes abrir **cualquier carpeta**; el entorno virtual no ofrece acciones destructivas (no borra ni mueve archivos originales).
 
-## How it works
+## Por qué no es “otro Finder / Explorer”
 
-1. **You select a local folder** using the browser's File System Access API (`showDirectoryPicker`), with a `<input webkitdirectory>` fallback for browsers without support.
-2. **The app scans the folder** recursively (`scanDirectory`) and classifies each file by extension into predefined categories — Executables and Tools, Graphic Resources, Documentation, Compressed Files, Multimedia, Code Projects, Subfolders, and Miscellaneous (`src/services/classifier.ts`). File metadata (size, dates, blob) is hydrated lazily with `ensureFileHydrated` when you select a file.
-3. **You edit the result** in two layouts:
-   - **Total** (grid): sidebar of containers + focused container with a split panel — file list (sortable) on the left, preview + properties + actions on the right.
-   - **Individual** (columns): all containers side by side.
-   Drag files between containers, rename or restyle containers, mark favorites, search and filter, and undo / redo (Ctrl+Z / Ctrl+Shift+Z).
-4. **You decide what to do with the result**:
-   - **Export ZIP**: downloads a `.zip` with a folder per container (via JSZip).
-   - **Export as HTML**: generates a self-contained and portable HTML gallery (with no external runtime dependencies, featuring light/dark mode) displaying the containers and their files — designed for sharing or consulting without needing the app.
+| Explorador nativo | showroom |
+|---|---|
+| Organiza la jerarquía real del disco | Organiza una **vista virtual** (contenedores) sin reescribir carpetas |
+| Mover / borrar cambia el sistema de archivos | Solo reordena la clasificación en memoria + sesión |
+| Una carpeta = una estructura fija | Recuerda la conformación de contenedores de las **últimas 10** carpetas |
+| Búsqueda genérica del SO | Búsqueda con tokens, filtros por tipo y agrupación |
 
-## Features
+Úsalo cuando quieras **pensar** cómo está organizada una carpeta (Downloads, proyectos, entregas) sin miedo a romper nada.
 
-- Automatic file classification by extension.
-- **Total** layout: split inspector (list + preview + properties/actions).
-- **Individual** layout: multi-column containers.
-- In-panel file preview (images with zoom, video/audio, text paging, PDF iframe).
-- File action menu: suggested by extension, frequent habits, grouped actions; browser-realistic today, with `NativeBridge` hooks ready for a future desktop shell (`src/platform/`).
-- Accessible tooltips on icon controls (`Tooltip.tsx`).
-- Drag & drop reordering for files and containers (`@dnd-kit`).
-- Container editing: name, color, and icon.
-- Trash bin with delete/restore.
-- Favorites persisted in `localStorage`.
-- Folder statistics in a pie chart (`recharts`).
-- Undo / redo.
-- Dark / light mode.
-- Sharing via the browser's Web Share API.
-- Export to ZIP or self-contained static HTML.
-- Lightweight state persistence in IndexedDB (`src/utils/idb.ts`).
-- Multi-language support (i18n; ES / EN).
-- Scan limits to prevent memory overload (max 100 subfolders and 1000 files).
+## Cómo funciona
 
-## Run locally
+1. **Selecciona una carpeta** — File System Access API, fallback `<input webkitdirectory>`, o diálogo nativo en Electron.
+2. **Escanea + clasifica** por extensión (`src/services/classifier.ts`). Siempre hay un contenedor **Otros**. Metadatos se hidratan bajo demanda con `ensureFileHydrated`.
+3. **Edita** en dos layouts:
+   - **Total**: sidebar + contenedor enfocado (lista | preview + propiedades + acciones).
+   - **Individual**: todos los contenedores en columnas.
+4. **Sesión**: al volver a la bienvenida, las últimas 10 carpetas aparecen en orden alfabético; al reabrirlas se restaura la distribución de contenedores.
 
-**Requirements:** Node.js
+## Características
+
+- Clasificación automática + contenedor **Otros** (sin papelera ni subcarpetas).
+- Preview in-panel, favoritos, undo/redo, dark mode, i18n ES/EN.
+- Búsqueda inteligente (nombre / ruta / extensión), filtros y agrupar por extensión o contenedor.
+- Acciones no destructivas (abrir, descargar, compartir, copiar ruta, favorito; en desktop `revealInFolder` / `openWith`).
+- Límites de escaneo (100 carpetas / 1000 archivos).
+
+## Ejecutar en local (navegador)
 
 ```bash
 npm install
 npm run dev
 ```
 
-Other available scripts:
-
 ```bash
-npm run build            # production build (Vite)
-npm run preview          # serves the production build
-npm run lint             # type checking with tsc --noEmit
-npm run test:scan-limits # automated scan-limit gate
-npm run clean            # deletes dist/
-npm run dev:cursor       # opens /cursor.html embed host (iframe tooling)
+npm run build
+npm run preview
+npm run lint
+npm run test:scan-limits
+npm run clean
+npm run dev:cursor       # /cursor.html embed host
 ```
 
-There is no need to configure any environment variables or API keys to use the app: all processing is local in the browser.
+## App de escritorio (Electron)
 
-## Technical stack
+```bash
+npm run electron:dev       # build UI + ventana Electron
+npm run electron:pack:mac  # → release/*.dmg y *-mac.zip (arm64)
+npm run electron:pack:win  # → release/*-win.zip (x64)
+```
 
-Vite 6 + React 19 + TypeScript (`strict` enabled), Tailwind CSS v4, `@dnd-kit` for drag & drop, `recharts` for statistics, `lucide-react` for icons, `motion` for animations, and `jszip` for ZIP export.
+Artefactos en `release/` (gitignored). Builds sin firmar: en macOS puede hacer falta clic derecho → Abrir la primera vez.
 
-Desktop packaging (Electron / Tauri / etc.) is planned as **Phase 5** — see [`docs/task.md`](docs/task.md). The UI already consumes a shared `ActionId` / `NativeBridge` API so native actions (`revealInFolder`, `openWith`, birth time, system compress) can plug in later via `window.__SHOWROOM_NATIVE__`.
+Código del shell: `electron/main.cjs`, `electron/preload.cjs`. Empaquetado: `electron-builder.yml` (solo `dist/` + `electron/`).
 
-## Roadmap
+Si falla la descarga de Electron desde GitHub, los scripts ya usan `ELECTRON_MIRROR=https://cdn.npmmirror.com/binaries/electron/`.
 
-Implementation status lives in [`docs/task.md`](docs/task.md) (Phases 1–4 done; Phase 5 packaging deferred).
+## Stack
 
-## Contributing
+Vite 6 + React 19 + TypeScript, Tailwind CSS v4, `@dnd-kit`, `recharts`, `lucide-react`, `motion`, Electron 37 + electron-builder.
 
-This repository is managed through forks and Pull Requests. Check out [CONTRIBUTING.md](CONTRIBUTING.md) (English) or [CONTRIBUIR.md](CONTRIBUIR.md) (Spanish) for the full workflow.
+Licencia: [MIT](LICENSE.md). Roadmap: [`docs/task.md`](docs/task.md).
+
+## Contribuir
+
+Forks y Pull Requests — ver [CONTRIBUTING.md](CONTRIBUTING.md).

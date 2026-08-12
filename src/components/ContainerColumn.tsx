@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ChevronDown, ChevronRight, Trash2, Settings, ArrowDownAZ, CheckSquare, Square, RotateCcw } from 'lucide-react';
+import { ChevronDown, ChevronRight, Trash2, Settings, ArrowDownAZ, CheckSquare, Square } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { FileEntry } from '../utils/fileSystem';
 import { renderIcon } from '../utils/theme';
@@ -9,17 +9,17 @@ import { FileItem } from './FileItem';
 import { GridDroppableArea } from './DroppableAreas';
 import { Tooltip } from './Tooltip';
 
-export const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, scannedFiles, onUpdateContainer, onCustomizeContainer, isExpanded = true, onToggleExpand, isTrash = false, onTrashAction, onSort, onDeleteContainer,
+export const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, scannedFiles, onUpdateContainer, onCustomizeContainer, isExpanded = true, onToggleExpand, onSort, onDeleteContainer,
   selectedFiles = new Set(), activeId = null, onFileClick, onFavoriteToggle, onDoubleClickFile, onSelectAll, onDeselectAll, fileDropFeedback = {}, requestConfirm
 }: { 
   key?: React.Key; id: string; name: string; color?: string; icon?: string; files: string[]; scannedFiles: FileEntry[]; onUpdateContainer: (id: string, updates: {name?: string, color?: string, icon?: string}) => void;
   onCustomizeContainer?: (id: string) => void;
-  isExpanded?: boolean; onToggleExpand?: () => void; isTrash?: boolean; onTrashAction?: (action: 'delete' | 'restore', files: string[]) => void;
+  isExpanded?: boolean; onToggleExpand?: () => void;
   onSort?: (id: string) => void; onDeleteContainer?: (id: string, files: string[]) => void;
   selectedFiles?: Set<string>; activeId?: string | null; onFileClick?: (e: React.MouseEvent | React.KeyboardEvent, id: string) => void;
   onFavoriteToggle?: () => void; onDoubleClickFile?: (e: React.MouseEvent, fileId: string) => void;
   onSelectAll?: (files: string[]) => void; onDeselectAll?: (files: string[]) => void;
-  fileDropFeedback?: Record<string, 'success-normal' | 'success-trash' | 'abort'>;
+  fileDropFeedback?: Record<string, 'success-normal' | 'abort'>;
   requestConfirm?: (msg: string, onConfirm: () => void) => void;
   existingNames?: string[];
 }) => {
@@ -108,19 +108,7 @@ export const ContainerColumn = ({ existingNames = [], id, name, color, icon, fil
     }
   };
 
-  const handleDeleteSelected = () => {
-    if (containerSelectedFiles.length > 0 && onTrashAction) {
-      doConfirm(t("confirm_delete", containerSelectedFiles.length) || `¿Eliminar ${containerSelectedFiles.length} elementos?`, () => {
-        onTrashAction('delete', containerSelectedFiles);
-      });
-    }
-  };
-
-  const handleRestoreSelected = () => {
-    if (containerSelectedFiles.length > 0 && onTrashAction) {
-      onTrashAction('restore', containerSelectedFiles);
-    }
-  };
+  const displayName = name.startsWith('cat_') ? t(name as any) : name;
 
   return (
     <div 
@@ -145,13 +133,9 @@ export const ContainerColumn = ({ existingNames = [], id, name, color, icon, fil
             )}
           </div>
           <h3 className={`flex items-center font-bold text-text-primary ${isExpanded ? 'flex-1 min-w-0 mr-2' : ''}`}>
-            {isTrash ? (
-              <Trash2 className={`flex-shrink-0 text-red-500 ${isExpanded ? 'mr-2 w-5 h-5' : 'mb-2 w-6 h-6 rotate-90'}`} />
-            ) : (
-              renderIcon(icon, color, isExpanded ? 'mr-2 w-5 h-5' : 'mb-2 w-6 h-6')
-            )}
+            {renderIcon(icon, color, isExpanded ? 'mr-2 w-5 h-5' : 'mb-2 w-6 h-6')}
             
-            {isEditing && isExpanded && !isTrash ? (
+            {isEditing && isExpanded ? (
               <input
                 ref={inputRef}
                 type="text"
@@ -166,26 +150,26 @@ export const ContainerColumn = ({ existingNames = [], id, name, color, icon, fil
             ) : (
               <span 
                 className={`container-header-interactive truncate focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isExpanded ? 'cursor-text hover:bg-black/5 dark:hover:bg-white/5 py-0.5 px-1 rounded -ml-1 transition-colors' : 'text-lg overflow-visible tracking-widest rotate-180'}`}
-                tabIndex={(isExpanded && !isTrash) || isTrash ? 0 : undefined}
-                role={(isExpanded && !isTrash) || isTrash ? "button" : undefined}
-                aria-label={isExpanded && !isTrash ? `${t('rename_container') || 'Renombrar contenedor'} ${id === 'trash' ? (t('trash') || 'Papelera') : name.startsWith('cat_') ? t(name as any) : name}` : (id === 'trash' ? (t('trash') || 'Papelera') : name.startsWith('cat_') ? t(name as any) : name)}
+                tabIndex={isExpanded ? 0 : undefined}
+                role={isExpanded ? "button" : undefined}
+                aria-label={isExpanded ? `${t('rename_container') || 'Renombrar contenedor'} ${displayName}` : displayName}
                 data-container-id={id}
                 onClick={(e) => {
-                  if (isExpanded && !isTrash) {
+                  if (isExpanded) {
                     e.stopPropagation();
                     setIsEditing(true);
                   }
                 }}
                 onKeyDown={(e) => {
-                  if (isExpanded && !isTrash && (e.key === 'Enter' || e.key === ' ')) {
+                  if (isExpanded && (e.key === 'Enter' || e.key === ' ')) {
                     e.stopPropagation();
                     e.preventDefault();
                     setIsEditing(true);
                   }
                 }}
-                title={isExpanded && !isTrash ? (t("click_to_rename") || "Clic para renombrar") : (id === 'trash' ? (t('trash') || 'Papelera') : name.startsWith('cat_') ? t(name as any) : name)}
+                title={isExpanded ? (t("click_to_rename") || "Clic para renombrar") : displayName}
               >
-                {id === 'trash' ? (t('trash') || 'Papelera') : name.startsWith('cat_') ? t(name as any) : name}
+                {displayName}
               </span>
             )}
           </h3>
@@ -197,104 +181,60 @@ export const ContainerColumn = ({ existingNames = [], id, name, color, icon, fil
 
       {isExpanded && (
         <>
-          {isTrash && files.length > 0 && (
-            <div className="flex items-center justify-between mb-3 text-xs border-b border-border-lite pb-2">
+          <div className="flex justify-between mb-2 gap-2 text-text-secondary">
+            {files.length > 0 ? (
               <button 
                 onClick={toggleSelection} 
-                className="flex items-center text-text-secondary hover:text-indigo-600 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded px-1 -ml-1"
+                className="flex items-center text-xs text-text-secondary hover:text-indigo-600 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded px-1 -ml-1"
                 title={t("select_all") || "Seleccionar todo"}
                 aria-label={isAllSelected ? (t("deselect_all") || "Deseleccionar todo") : (t("select_all") || "Seleccionar todo")}
               >
-                {isAllSelected ? <CheckSquare className="w-4 h-4 mr-1" /> : <Square className="w-4 h-4 mr-1" />}
+                {isAllSelected ? <CheckSquare className="w-3.5 h-3.5 mr-1" /> : <Square className="w-3.5 h-3.5 mr-1" />}
                 Todo
               </button>
-              {containerSelectedFiles.length > 0 ? (
-                <div className="flex items-center gap-2">
-                  <Tooltip content={t("restore_selected")}>
-                    <button onClick={handleRestoreSelected} className="flex items-center text-emerald-600 hover:text-emerald-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1" aria-label={t("restore_selected")}>
-                      <RotateCcw className="w-4 h-4" />
-                    </button>
-                  </Tooltip>
-                  <Tooltip content={t("delete_selected")}>
-                    <button onClick={handleDeleteSelected} className="flex items-center text-red-600 hover:text-red-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-1" aria-label={t("delete_selected")}>
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </Tooltip>
-                </div>
-              ) : (
+            ) : <div />}
+            <div className="flex items-center gap-1">
+              {typeof onCustomizeContainer === 'function' && (
                 <button 
-                  onClick={() => {
-                    if (onTrashAction) {
-                      doConfirm(t("confirm_empty_trash") || "¿Vaciar papelera?", () => {
-                        onTrashAction('delete', files);
-                      });
-                    }
-                  }} 
-                  className="flex items-center justify-center flex-1 ml-2 bg-red-500 text-white hover:bg-red-600 font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-2"
-                  aria-label={t("empty_trash_action") || "Vaciar papelera"}
+                  onClick={() => onCustomizeContainer(id)}
+                  className="flex items-center text-xs hover:text-indigo-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded p-1"
+                  title={t("configure") || "Configurar"}
+                  aria-label={t("configure") || "Configurar"}
                 >
-                  <Trash2 className="w-4 h-4 mr-1.5" />
-                  Vaciar Todo
+                  <Settings className="w-4 h-4 mr-1" />
+                  Color/Icono
                 </button>
               )}
-            </div>
-          )}
-          {!isTrash && (
-            <div className="flex justify-between mb-2 gap-2 text-text-secondary">
-              {files.length > 0 ? (
+              {files.length > 0 && typeof onSort === 'function' && (
                 <button 
-                  onClick={toggleSelection} 
-                  className="flex items-center text-xs text-text-secondary hover:text-indigo-600 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded px-1 -ml-1"
-                  title={t("select_all") || "Seleccionar todo"}
-                  aria-label={isAllSelected ? (t("deselect_all") || "Deseleccionar todo") : (t("select_all") || "Seleccionar todo")}
+                  onClick={() => onSort(id)}
+                  className="flex items-center text-xs hover:text-indigo-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded p-1"
+                  title={t("sort_alpha") || "Ordenar alfabéticamente"}
+                  aria-label={t("sort_alpha") || "Ordenar alfabéticamente"}
                 >
-                  {isAllSelected ? <CheckSquare className="w-3.5 h-3.5 mr-1" /> : <Square className="w-3.5 h-3.5 mr-1" />}
-                  Todo
+                  <ArrowDownAZ className="w-4 h-4 mr-1" />
+                  Ordenar
                 </button>
-              ) : <div />}
-              <div className="flex items-center gap-1">
-                {typeof onCustomizeContainer === 'function' && (
-                  <button 
-                    onClick={() => onCustomizeContainer(id)}
-                    className="flex items-center text-xs hover:text-indigo-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded p-1"
-                    title={t("configure") || "Configurar"}
-                    aria-label={t("configure") || "Configurar"}
-                  >
-                    <Settings className="w-4 h-4 mr-1" />
-                    Color/Icono
-                  </button>
-                )}
-                {files.length > 0 && typeof onSort === 'function' && (
-                  <button 
-                    onClick={() => onSort(id)}
-                    className="flex items-center text-xs hover:text-indigo-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded p-1"
-                    title={t("sort_alpha") || "Ordenar alfabéticamente"}
-                    aria-label={t("sort_alpha") || "Ordenar alfabéticamente"}
-                  >
-                    <ArrowDownAZ className="w-4 h-4 mr-1" />
-                    Ordenar
-                  </button>
-                )}
-                {id.startsWith('custom-') && typeof onDeleteContainer === 'function' && files.length === 0 && (
-                   <Tooltip content={t("delete_this_container")}>
-                   <button 
-                    onClick={() => {
-                      doConfirm(`${t('delete_container_q') || '¿Eliminar contenedor'} \"${name}\"?`, () => {
-                        if (onDeleteContainer) onDeleteContainer(id, files);
-                      });
-                    }}
-                    className="flex items-center text-xs hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-1"
-                    aria-label={`Eliminar contenedor ${name}`}
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Eliminar
-                  </button>
-                  </Tooltip>
-                )}
-              </div>
+              )}
+              {id.startsWith('custom-') && typeof onDeleteContainer === 'function' && files.length === 0 && (
+                 <Tooltip content={t("delete_this_container")}>
+                 <button 
+                  onClick={() => {
+                    doConfirm(`${t('delete_container_q') || '¿Eliminar contenedor'} \"${displayName}\"?`, () => {
+                      if (onDeleteContainer) onDeleteContainer(id, files);
+                    });
+                  }}
+                  className="flex items-center text-xs hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-1"
+                  aria-label={`Eliminar contenedor ${displayName}`}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Eliminar
+                </button>
+                </Tooltip>
+              )}
             </div>
-          )}
-          <GridDroppableArea containerId={id} isTrash={isTrash}>
+          </div>
+          <GridDroppableArea containerId={id}>
             {files.map((file, fileIdx) => (
               <div key={file} className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
