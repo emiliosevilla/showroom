@@ -21,13 +21,13 @@ async function openBlob(file: File, download: boolean) {
   }
 }
 
+/** Non-destructive actions only — never delete or relocate source files on disk. */
 export async function runBrowserAction(
   actionId: ActionId,
   ctx: ActionContext
 ): Promise<ActionResult> {
-  const { entry, selectedPaths, app } = ctx;
+  const { entry, app } = ctx;
   const native = getNativeBridge();
-  const paths = selectedPaths.length > 0 ? selectedPaths : [entry.path];
 
   switch (actionId) {
     case 'open':
@@ -69,20 +69,7 @@ export async function runBrowserAction(
       app.toggleFavorite(entry.path);
       return { ok: true };
     }
-    case 'trash': {
-      app.moveToTrash(paths);
-      return { ok: true };
-    }
-    case 'zipSelection':
-    case 'compress': {
-      await app.zipPaths(paths);
-      return { ok: true };
-    }
     case 'prepareToSend': {
-      if (paths.length > 1) {
-        await app.zipPaths(paths);
-        return { ok: true, message: 'prepare_send_zipped' };
-      }
       if (entry.fileObject && navigator.share) {
         try {
           const data: ShareData = { title: entry.name, files: [entry.fileObject] };
@@ -91,7 +78,7 @@ export async function runBrowserAction(
             return { ok: true };
           }
         } catch {
-          /* fall through to download */
+          /* fall through */
         }
       }
       if (entry.fileObject) {
@@ -102,14 +89,14 @@ export async function runBrowserAction(
     }
     case 'openWith': {
       if (native?.openWith) {
-        await native.openWith(entry.path);
+        await native.openWith(entry.absolutePath || entry.path);
         return { ok: true };
       }
       return { ok: false, message: 'requires_desktop' };
     }
     case 'revealInFolder': {
       if (native?.revealInFolder) {
-        await native.revealInFolder(entry.path);
+        await native.revealInFolder(entry.absolutePath || entry.path);
         return { ok: true };
       }
       return { ok: false, message: 'requires_desktop' };

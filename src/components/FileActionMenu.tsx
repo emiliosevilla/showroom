@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
-  ExternalLink, Download, Share2, Copy, Star, Trash2, FolderOpen,
-  Archive, Monitor, Send, Move, ChevronDown, ChevronRight, Lock
+  ExternalLink, Download, Share2, Copy, Star, FolderOpen,
+  Send, Move, ChevronDown, ChevronRight, Lock, Monitor
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { FileEntry } from '../utils/fileSystem';
@@ -24,12 +24,9 @@ const ICONS: Partial<Record<ActionId, React.ReactNode>> = {
   download: <Download className="w-3.5 h-3.5" />,
   share: <Share2 className="w-3.5 h-3.5" />,
   copyPath: <Copy className="w-3.5 h-3.5" />,
-  zipSelection: <Archive className="w-3.5 h-3.5" />,
-  compress: <Archive className="w-3.5 h-3.5" />,
   prepareToSend: <Send className="w-3.5 h-3.5" />,
   favorite: <Star className="w-3.5 h-3.5" />,
   moveToContainer: <Move className="w-3.5 h-3.5" />,
-  trash: <Trash2 className="w-3.5 h-3.5" />,
 };
 
 type Props = {
@@ -68,7 +65,6 @@ export function FileActionMenu({ entry, selectedPaths, entriesByPath, containerI
     if (result.message === 'path_copied') app.showToast?.(t('path_copied'));
     if (result.message === 'requires_desktop') app.showToast?.(t('action_requires_desktop'));
     if (result.message === 'use_drag_drop') app.showToast?.(t('action_use_drag_drop'));
-    if (result.message === 'prepare_send_zipped') app.showToast?.(t('prepare_send_zipped'));
     if (result.message === 'prepare_send_downloaded') app.showToast?.(t('prepare_send_downloaded'));
   };
 
@@ -138,8 +134,7 @@ export function FileActionMenu({ entry, selectedPaths, entriesByPath, containerI
                           type="button"
                           disabled={!available && def.requiresNative}
                           onClick={() => run(def.id)}
-                          className={`flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-md text-xs transition-colors
-                            ${def.group === 'danger' ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-text-primary hover:bg-surface-base'}
+                          className={`flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-md text-xs transition-colors text-text-primary hover:bg-surface-base
                             ${!available && def.requiresNative ? 'opacity-50 cursor-not-allowed' : ''}`}
                           aria-label={label}
                         >

@@ -1,14 +1,17 @@
 import { useState, useRef, Dispatch, SetStateAction } from 'react';
 import { scanDirectory, FileEntry, processFileList } from '../utils/fileSystem';
-import { classifyFiles, ClassificationResult } from '../services/classifier';
+import { classifyFiles, ClassificationResult, ensureOthersContainer } from '../services/classifier';
 import { setKey } from '../utils/idb';
 import { TranslationKey } from '../i18n/translations';
 import { shouldUseFolderInputFallback } from '../utils/embedContext';
+import { getNativeBridge } from '../platform/types';
 
 export type AppStep = 'input' | 'scanning' | 'classifying' | 'editor';
 
 export interface SavedSession {
   folderName: string;
+  /** Absolute path when opened via Electron native picker */
+  workspacePath?: string;
   dirHandle: any;
   classification: ClassificationResult;
   timestamp: number;
@@ -28,6 +31,7 @@ export interface UseFileSystemReturn {
   step: AppStep;
   folderName: string;
   dirHandle: any;
+  workspacePath: string | null;
   scannedFiles: FileEntry[];
   setScannedFiles: Dispatch<SetStateAction<FileEntry[]>>;
   errorMsg: string;
@@ -36,6 +40,14 @@ export interface UseFileSystemReturn {
   handleSelectFolder: () => Promise<void>;
   handleFallbackSelectFolder: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleResumeSession: (session: SavedSession) => Promise<void>;
+}
+
+function sessionMatchKey(s: Pick<SavedSession, 'folderName' | 'workspacePath'>): string {
+  return (s.workspacePath || s.folderName).toLowerCase();
+}
+
+function finalizeClassification(result: ClassificationResult): ClassificationResult {
+  return ensureOthersContainer(result);
 }
 
 export function useFileSystem({
@@ -50,10 +62,18 @@ export function useFileSystem({
   const [step, setStep] = useState<AppStep>('input');
   const [folderName, setFolderName] = useState('');
   const [dirHandle, setDirHandle] = useState<any>(null);
+  const [workspacePath, setWorkspacePath] = useState<string | null>(null);
   const [scannedFiles, setScannedFiles] = useState<FileEntry[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const enterEditor = (result: ClassificationResult) => {
+    setClassification(finalizeClassification(result));
+    setExpandedContainers(new Set());
+    setStep('editor');
+    setIsDirty(true);
+  };
 
   const handleFallbackSelectFolder = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -64,6 +84,7 @@ export function useFileSystem({
       const { entries, rootName } = processFileList(e.target.files);
       setFolderName(rootName);
       setDirHandle(null);
+      setWorkspacePath(null);
       setScannedFiles(entries);
 
       if (entries.length === 0) {
@@ -75,13 +96,7 @@ export function useFileSystem({
       const cappedFiles = entries.slice(0, 2000);
       setStep('classifying');
       const result = await classifyFilesFn(cappedFiles);
-      if (!result.containers.find((c) => c.id === 'trash')) {
-        result.containers.push({ id: 'trash', name: t('trash'), files: [] });
-      }
-      setClassification(result);
-      setExpandedContainers(new Set());
-      setStep('editor');
-      setIsDirty(true);
+      enterEditor(result);
     } catch (err: any) {
       console.error(err);
       setErrorMsg(t('error_processing'));
@@ -89,10 +104,100 @@ export function useFileSystem({
     }
   };
 
+  const mergeLiveWithSaved = async (
+    filesDesc: FileEntry[],
+    session: SavedSession
+  ): Promise<ClassificationResult> => {
+    const currentPaths = new Set(filesDesc.map((f) => f.path));
+    const savedPaths = new Set<string>();
+    session.classification.containers.forEach((c) => {
+      c.files.forEach((f) => savedPaths.add(f));
+    });
+
+    const newFiles = filesDesc.filter((f) => !savedPaths.has(f.path));
+
+    let updatedContainers = session.classification.containers
+      .filter((c) => c.id !== 'trash')
+      .map((c) => ({
+        ...c,
+        files: c.files.filter((f) => currentPaths.has(f)),
+      }));
+
+    if (newFiles.length > 0) {
+      const newClassification = await classifyFilesFn(newFiles);
+      newClassification.containers.forEach((nc) => {
+        if (nc.files.length === 0) return;
+        const existing = updatedContainers.find(
+          (c) => c.id === nc.id || c.name.toLowerCase() === nc.name.toLowerCase()
+        );
+        if (existing) {
+          existing.files.push(...nc.files);
+        } else {
+          updatedContainers.push({
+            ...nc,
+            id: `merged-${Date.now()}-${nc.id}`,
+          });
+        }
+      });
+    }
+
+    return finalizeClassification({
+      ...session.classification,
+      containers: updatedContainers,
+    });
+  };
+
   const handleResumeSession = async (session: SavedSession) => {
     try {
       setStep('scanning');
+      const native = getNativeBridge();
+
+      if (session.workspacePath && native?.scanFolder) {
+        native.setWorkspaceRoot?.(session.workspacePath);
+        const scanned = await native.scanFolder(session.workspacePath);
+        const filesDesc: FileEntry[] = scanned
+          .filter((s) => s.kind === 'file')
+          .map((s) => ({
+            path: s.path,
+            name: s.name,
+            kind: 'file' as const,
+            lastModified: s.lastModified,
+            size: s.size,
+            createdAt: s.createdAt,
+            extension: s.extension || s.name.split('.').pop()?.toLowerCase() || '',
+            absolutePath: s.absolutePath || s.path,
+          }));
+        setDirHandle(null);
+        setWorkspacePath(session.workspacePath);
+        setFolderName(session.folderName);
+        setScannedFiles(filesDesc);
+        if (filesDesc.length === 0) {
+          setErrorMsg(t('folder_empty'));
+          setStep('input');
+          return;
+        }
+        const merged = await mergeLiveWithSaved(filesDesc, session);
+        setClassification(merged);
+        setExpandedContainers(new Set());
+        setStep('editor');
+        setIsDirty(true);
+        return;
+      }
+
       const handle = session.dirHandle;
+      if (!handle) {
+        // Layout-only restore (no live handle after reload)
+        setDirHandle(null);
+        setWorkspacePath(session.workspacePath || null);
+        setFolderName(session.folderName);
+        setScannedFiles([]);
+        setClassification(finalizeClassification(session.classification));
+        setExpandedContainers(new Set());
+        setStep('editor');
+        setIsDirty(true);
+        return;
+      }
+
       if ((await handle.queryPermission({ mode: 'read' })) !== 'granted') {
         const permission = await handle.requestPermission({ mode: 'read' });
         if (permission !== 'granted') {
@@ -100,6 +205,7 @@ export function useFileSystem({
         }
       }
       setDirHandle(handle);
+      setWorkspacePath(null);
       setFolderName(session.folderName);
 
       abortControllerRef.current = new AbortController();
@@ -119,42 +225,8 @@ export function useFileSystem({
       }
       setScannedFiles(filesDesc);
 
-      const currentPaths = new Set(filesDesc.map((f) => f.path));
-      const savedPaths = new Set<string>();
-
-      session.classification.containers.forEach((c) => {
-        c.files.forEach((f) => savedPaths.add(f));
-      });
-
-      const newFiles = filesDesc.filter((f) => !savedPaths.has(f.path));
-
-      let updatedContainers = session.classification.containers.map((c) => ({
-        ...c,
-        files: c.files.filter((f) => currentPaths.has(f)),
-      }));
-
-      if (newFiles.length > 0) {
-        const newClassification = await classifyFilesFn(newFiles);
-        newClassification.containers.forEach((nc) => {
-          if (nc.files.length === 0) return;
-          const existRegex = new RegExp(`^${nc.name}$`, 'i');
-          const existing = updatedContainers.find((c) => existRegex.test(c.name));
-          if (existing) {
-            existing.files.push(...nc.files);
-          } else {
-            updatedContainers.push({
-              ...nc,
-              id: `merged-${Date.now()}-${nc.id}`,
-            });
-          }
-        });
-      }
-
-      setClassification({
-        ...session.classification,
-        containers: updatedContainers,
-      });
-
+      const merged = await mergeLiveWithSaved(filesDesc, session);
+      setClassification(merged);
       setExpandedContainers(new Set());
       setStep('editor');
       setIsDirty(true);
@@ -165,7 +237,9 @@ export function useFileSystem({
       );
       setStep('input');
 
-      const updatedSessions = savedSessions.filter((s) => s.folderName !== session.folderName);
+      const updatedSessions = savedSessions.filter(
+        (s) => sessionMatchKey(s) !== sessionMatchKey(session)
+      );
       setSavedSessions(updatedSessions);
       setKey('smartfolder_sessions', updatedSessions);
     }
@@ -173,6 +247,47 @@ export function useFileSystem({
 
   const handleSelectFolder = async () => {
     setErrorMsg('');
+
+    const native = getNativeBridge();
+    if (native?.pickFolder && native.scanFolder) {
+      try {
+        const picked = await native.pickFolder();
+        if (!picked) return;
+        setStep('scanning');
+        native.setWorkspaceRoot?.(picked.path);
+        const scanned = await native.scanFolder(picked.path);
+        const filesDesc: FileEntry[] = scanned
+          .filter((s) => s.kind === 'file')
+          .map((s) => ({
+            path: s.path,
+            name: s.name,
+            kind: 'file' as const,
+            lastModified: s.lastModified,
+            size: s.size,
+            createdAt: s.createdAt,
+            extension: s.extension || s.name.split('.').pop()?.toLowerCase() || '',
+            absolutePath: s.absolutePath || s.path,
+          }));
+        setFolderName(picked.name);
+        setDirHandle(null);
+        setWorkspacePath(picked.path);
+        setScannedFiles(filesDesc);
+        if (filesDesc.length === 0) {
+          setErrorMsg(t('folder_empty'));
+          setStep('input');
+          return;
+        }
+        setStep('classifying');
+        const result = await classifyFilesFn(filesDesc.slice(0, 2000));
+        enterEditor(result);
+        return;
+      } catch (err: any) {
+        console.error(err);
+        setErrorMsg(t('error_accessing_folder'));
+        setStep('input');
+        return;
+      }
+    }
 
     if (shouldUseFolderInputFallback()) {
       fileInputRef.current?.click();
@@ -182,6 +297,7 @@ export function useFileSystem({
     try {
       const handle = await (window as any).showDirectoryPicker({ mode: 'read' });
       setDirHandle(handle);
+      setWorkspacePath(null);
       setFolderName(handle.name);
       setStep('scanning');
 
@@ -209,21 +325,12 @@ export function useFileSystem({
       }
 
       const cappedFiles = filesDesc.slice(0, 2000);
-
       setStep('classifying');
-
       const result = await classifyFilesFn(cappedFiles);
-      if (!result.containers.find((c) => c.id === 'trash')) {
-        result.containers.push({ id: 'trash', name: t('trash'), files: [] });
-      }
-      setClassification(result);
-      setExpandedContainers(new Set());
-      setStep('editor');
-      setIsDirty(true);
+      enterEditor(result);
     } catch (err: any) {
       console.error(err);
       if (err?.name === 'AbortError') {
-        // User cancelled the picker — stay on the current step (e.g. editor).
         return;
       }
       setErrorMsg(t('error_accessing_folder'));
@@ -235,6 +342,7 @@ export function useFileSystem({
     step,
     folderName,
     dirHandle,
+    workspacePath,
     scannedFiles,
     setScannedFiles,
     errorMsg,
