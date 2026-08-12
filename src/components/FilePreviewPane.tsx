@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getImagePreview } from '../exportHtml';
 import { FileEntry } from '../utils/fileSystem';
+import { FileTypeIconPlate } from '../utils/fileTypeIcon';
+import { getNativeBridge } from '../platform/types';
 import {
   ZoomOut, ZoomIn, Maximize,
   Play, Pause, Loader2, ChevronLeft, ChevronRight, FileQuestion
@@ -20,6 +22,79 @@ type Props = {
   emptyLabel?: string;
 };
 
+function IconFallbackPreview({
+  fileEntry,
+  displayName,
+  className = '',
+}: {
+  fileEntry: FileEntry;
+  displayName: string;
+  className?: string;
+}) {
+  const { t } = useLanguage();
+  const ext = fileEntry.extension?.toLowerCase() || '';
+  const [nativeIconUrl, setNativeIconUrl] = useState<string | null>(null);
+  const [nativeTried, setNativeTried] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setNativeIconUrl(null);
+    setNativeTried(false);
+
+    const native = getNativeBridge();
+    const target = fileEntry.absolutePath || fileEntry.path;
+    if (!native?.getFileIcon || !target) {
+      setNativeTried(true);
+      return;
+    }
+
+    native
+      .getFileIcon(target)
+      .then((url) => {
+        if (!cancelled) setNativeIconUrl(url || null);
+      })
+      .catch(() => {
+        if (!cancelled) setNativeIconUrl(null);
+      })
+      .finally(() => {
+        if (!cancelled) setNativeTried(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fileEntry.path, fileEntry.absolutePath]);
+
+  return (
+    <div className={`flex flex-col items-center justify-center h-full text-text-secondary gap-4 p-6 ${className}`}>
+      {!nativeTried && !nativeIconUrl ? (
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500 opacity-60" />
+      ) : nativeIconUrl ? (
+        <div className="flex items-center justify-center rounded-3xl border border-border-lite bg-surface-card shadow-sm p-6">
+          <img
+            src={nativeIconUrl}
+            alt=""
+            className="w-28 h-28 object-contain drop-shadow-md"
+            style={{ imageRendering: 'auto' }}
+          />
+        </div>
+      ) : (
+        <FileTypeIconPlate extension={ext} className="p-8" iconClassName="w-28 h-28" />
+      )}
+      <div className="text-center max-w-full space-y-1">
+        <p className="text-sm font-medium text-text-primary truncate max-w-[16rem]" title={displayName}>
+          {displayName}
+        </p>
+        {ext ? (
+          <p className="text-[11px] font-mono uppercase tracking-wider opacity-60">.{ext}</p>
+        ) : (
+          <p className="text-xs opacity-60">{t('preview_type_unsupported')}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function FilePreviewPane({ fileEntry, name = '', className = '', emptyLabel }: Props) {
   const { t } = useLanguage();
   const ext = fileEntry?.extension?.toLowerCase() || '';
@@ -28,6 +103,7 @@ export function FilePreviewPane({ fileEntry, name = '', className = '', emptyLab
   const isAudio = AUDIO_EXTS.includes(ext);
   const isText = TEXT_EXTS.includes(ext);
   const isPdf = ext === 'pdf';
+  const canContentPreview = isImage || isPdf || isVideo || isAudio || isText;
 
   const previewUrl = useMemo(() => {
     if (!fileEntry?.fileObject) return '';
@@ -86,6 +162,19 @@ export function FilePreviewPane({ fileEntry, name = '', className = '', emptyLab
     );
   }
 
+  const displayName = name || fileEntry.name;
+
+  // No content preview (executables, archives, etc.): show OS icon or Lucide type icon.
+  if (!canContentPreview) {
+    return (
+      <IconFallbackPreview
+        fileEntry={fileEntry}
+        displayName={displayName}
+        className={className}
+      />
+    );
+  }
+
   if (!fileEntry.fileObject && !fileEntry.hydrated) {
     return (
       <div className={`flex items-center justify-center ${className}`}>
@@ -96,14 +185,13 @@ export function FilePreviewPane({ fileEntry, name = '', className = '', emptyLab
 
   if (!fileEntry.fileObject) {
     return (
-      <div className={`flex flex-col items-center justify-center text-text-secondary gap-2 ${className}`}>
-        <FileQuestion className="w-10 h-10 opacity-40" />
-        <p className="text-sm">{t('preview_unavailable')}</p>
-      </div>
+      <IconFallbackPreview
+        fileEntry={fileEntry}
+        displayName={displayName}
+        className={className}
+      />
     );
   }
-
-  const displayName = name || fileEntry.name;
 
   return (
     <div className={`relative flex flex-col overflow-hidden bg-surface-base/30 ${className}`}>
@@ -164,7 +252,8 @@ export function FilePreviewPane({ fileEntry, name = '', className = '', emptyLab
       )}
 
       {isAudio && previewUrl && (
-        <div className="flex items-center justify-center w-full h-full p-6">
+        <div className="flex flex-col items-center justify-center w-full h-full gap-6 p-6">
+          <FileTypeIconPlate extension={ext} className="p-6" iconClassName="w-20 h-20" />
           <audio controls className="w-full max-w-md">
             <source src={previewUrl} type={`audio/${ext}`} />
           </audio>
@@ -191,14 +280,6 @@ export function FilePreviewPane({ fileEntry, name = '', className = '', emptyLab
               </button>
             </div>
           )}
-        </div>
-      )}
-
-      {!isImage && !isPdf && !isVideo && !isAudio && !isText && (
-        <div className="flex flex-col items-center justify-center h-full text-text-secondary gap-2 p-4">
-          <FileQuestion className="w-10 h-10 opacity-40" />
-          <p className="text-sm text-center">{t('preview_type_unsupported')}</p>
-          <p className="text-xs font-mono opacity-70 truncate max-w-full">{displayName}</p>
         </div>
       )}
     </div>

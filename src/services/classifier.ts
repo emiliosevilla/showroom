@@ -64,46 +64,69 @@ const EXTENSION_MAP: Record<string, string> = {
   'jsx': 'cat_code',
 };
 
+/** Stable id for the catch-all "Others" container. */
+export const OTHERS_CONTAINER_ID = 'otros';
+export const OTHERS_CONTAINER_NAME = 'cat_misc';
+
 export async function classifyFiles(files: FileEntry[]): Promise<ClassificationResult> {
-  // Simulate a slight delay to keep UI fluid
   await new Promise(res => setTimeout(res, 500));
 
   const groups: Record<string, string[]> = {
-    'cat_subfolders': [],
     'cat_executables': [],
     'cat_graphics': [],
     'cat_docs': [],
     'cat_compressed': [],
     'cat_multimedia': [],
     'cat_code': [],
-    'cat_misc': []
+    [OTHERS_CONTAINER_NAME]: [],
   };
 
   for (const file of files) {
-    if (file.kind === 'directory') {
-      groups['cat_subfolders'].push(file.path);
-    } else {
-      const ext = file.extension?.toLowerCase() || '';
-      if (ext) {
-        const groupName = EXTENSION_MAP[ext] || 'cat_misc';
-        if (!groups[groupName]) {
-          groups[groupName] = [];
-        }
-        groups[groupName].push(file.path);
-      } else {
-        groups['cat_misc'].push(file.path);
-      }
-    }
+    // Directories are not classified into containers (no subfolders bucket).
+    if (file.kind === 'directory') continue;
+
+    const ext = file.extension?.toLowerCase() || '';
+    const groupName = (ext && EXTENSION_MAP[ext]) || OTHERS_CONTAINER_NAME;
+    if (!groups[groupName]) groups[groupName] = [];
+    groups[groupName].push(file.path);
   }
 
   const containers = Object.entries(groups)
-    .filter(([_, groupFiles]) => groupFiles.length > 0)
+    .filter(([name, groupFiles]) => groupFiles.length > 0 || name === OTHERS_CONTAINER_NAME)
     .map(([name, groupFiles], idx) => ({
-      id: `cont_${idx}`,
+      id: name === OTHERS_CONTAINER_NAME ? OTHERS_CONTAINER_ID : `cont_${idx}`,
       name,
-      files: groupFiles
+      files: groupFiles,
     }));
+
+  // Ensure Others is always last
+  containers.sort((a, b) => {
+    if (a.id === OTHERS_CONTAINER_ID) return 1;
+    if (b.id === OTHERS_CONTAINER_ID) return -1;
+    return 0;
+  });
 
   return { containers };
 }
 
+/** Guarantee an Others container exists (empty allowed). */
+export function ensureOthersContainer(
+  result: ClassificationResult,
+  othersLabel = OTHERS_CONTAINER_NAME
+): ClassificationResult {
+  if (result.containers.some(c => c.id === OTHERS_CONTAINER_ID || c.name === OTHERS_CONTAINER_NAME)) {
+    return {
+      containers: result.containers.map(c =>
+        c.name === OTHERS_CONTAINER_NAME || c.id === OTHERS_CONTAINER_ID
+          ? { ...c, id: OTHERS_CONTAINER_ID, name: othersLabel === OTHERS_CONTAINER_NAME ? OTHERS_CONTAINER_NAME : c.name }
+          : c
+      ),
+    };
+  }
+  return {
+    containers: [
+      ...result.containers,
+      { id: OTHERS_CONTAINER_ID, name: OTHERS_CONTAINER_NAME, files: [] },
+    ],
+  };
+}

@@ -8,7 +8,7 @@ export const translations = {
     cat_multimedia: "Multimedia",
     cat_code: "Proyectos de Código",
     cat_subfolders: "Subcarpetas",
-    cat_misc: "Varios",
+    cat_misc: "Otros",
 
     // UI
     select_folder: "Seleccionar Carpeta a Organizar",
@@ -18,7 +18,7 @@ export const translations = {
     browser_permission_1: "El navegador pedirá permiso para",
     browser_permission_2: "ver",
     browser_permission_3: "los archivos.",
-    recent_sessions: "Sesiones Recientes",
+    recent_sessions: "Últimas carpetas (A–Z)",
     folder_label: "CARPETA:",
     change_btn: "Cambiar",
     export_space: "Exportar espacio",
@@ -118,7 +118,10 @@ export const translations = {
     
     // Hero & Input
     hero_title: "Tu espacio, mejor.",
-    hero_subtitle: "Entorno virtual a tu gusto, 100% privado y seguro",
+    hero_subtitle: "Organiza y explora tus carpetas en un entorno virtual seguro",
+    hero_bullet_desktop: "La app de escritorio puede abrir cualquier carpeta que elijas",
+    hero_bullet_local: "100% local y privado — nada sale de tu equipo",
+    hero_bullet_safe: "Sin acciones destructivas: tus archivos originales no se borran ni se mueven en disco",
     new_tab_req: "Requiere Pestaña Nueva",
     new_tab_desc: "Para acceder a tus carpetas locales necesitamos usar herramientas avanzadas del navegador. Abre la aplicación en una pestaña nueva para habilitarlas. <br/><br/><strong>Tranquilidad:</strong> el proceso es 100% local. Ni los nombres ni el contenido de tus archivos se suben a internet ni se comparten con nadie.",
     open_new_tab: "Abrir aplicación en pestaña nueva",
@@ -135,8 +138,8 @@ export const translations = {
 
     // Filters
     search_files: "Buscar archivos...",
-    search_by_name: "Buscar por nombre...",
-    search_by_name_aria: "Buscar por nombre",
+    search_by_name: "Buscar (nombre, ruta, extensión)…",
+    search_by_name_aria: "Búsqueda inteligente por nombre, ruta o extensión",
     clear_search: "Limpiar búsqueda",
     all_files: "Todos los archivos",
     favorites: "Favoritos",
@@ -144,10 +147,18 @@ export const translations = {
     filter_table_aria: "Filtrar tabla",
     clear_filter: "Limpiar filtro",
     types_all: "Tipos: Todos",
+    types_favorites: "Favoritos",
     types_executables: "Ejecutables",
-    types_subfolders: "Subcarpetas",
     types_images: "Imágenes",
     types_documents: "Documentos",
+    types_code: "Código",
+    types_multimedia: "Multimedia",
+    types_compressed: "Comprimidos",
+    types_other: "Otros",
+    group_by: "Agrupar por",
+    group_by_none: "Sin agrupar",
+    group_by_extension: "Extensión",
+    group_by_container: "Contenedor",
     filter_by_type: "Filtrar por tipo",
     dark_mode_toggle: "Alternar Modo Oscuro",
 
@@ -266,7 +277,7 @@ export const translations = {
     cat_multimedia: "Multimedia",
     cat_code: "Code Projects",
     cat_subfolders: "Subfolders",
-    cat_misc: "Miscellaneous",
+    cat_misc: "Others",
 
     // UI
     select_folder: "Select Folder to Organize",
@@ -276,7 +287,7 @@ export const translations = {
     browser_permission_1: "The browser will ask for permission to",
     browser_permission_2: "view",
     browser_permission_3: "the files.",
-    recent_sessions: "Recent Sessions",
+    recent_sessions: "Recent folders (A–Z)",
     folder_label: "FOLDER:",
     change_btn: "Change",
     export_space: "Export space",
@@ -376,7 +387,10 @@ export const translations = {
     
     // Hero & Input
     hero_title: "Your space, better.",
-    hero_subtitle: "A virtual environment your way, 100% private and secure",
+    hero_subtitle: "Organize and explore your folders in a safe virtual environment",
+    hero_bullet_desktop: "The desktop app can open any folder you choose",
+    hero_bullet_local: "100% local and private — nothing leaves your device",
+    hero_bullet_safe: "No destructive actions — your original files are never deleted or moved on disk",
     new_tab_req: "New Tab Required",
     new_tab_desc: "To access your local folders, we need to use advanced browser features. Open the application in a new tab to enable them. <br/><br/><strong>Peace of mind:</strong> the process is 100% local. Neither the names nor the content of your files are uploaded to the internet or shared with anyone.",
     open_new_tab: "Open application in new tab",
@@ -393,8 +407,8 @@ export const translations = {
 
     // Filters
     search_files: "Search files...",
-    search_by_name: "Search by name...",
-    search_by_name_aria: "Search by name",
+    search_by_name: "Search (name, path, extension)…",
+    search_by_name_aria: "Smart search by name, path, or extension",
     clear_search: "Clear search",
     all_files: "All files",
     favorites: "Favorites",
@@ -402,10 +416,18 @@ export const translations = {
     filter_table_aria: "Filter table",
     clear_filter: "Clear filter",
     types_all: "Types: All",
+    types_favorites: "Favorites",
     types_executables: "Executables",
-    types_subfolders: "Subfolders",
     types_images: "Images",
     types_documents: "Documents",
+    types_code: "Code",
+    types_multimedia: "Multimedia",
+    types_compressed: "Compressed",
+    types_other: "Other",
+    group_by: "Group by",
+    group_by_none: "No grouping",
+    group_by_extension: "Extension",
+    group_by_container: "Container",
     filter_by_type: "Filter by type",
     dark_mode_toggle: "Toggle Dark Mode",
 
