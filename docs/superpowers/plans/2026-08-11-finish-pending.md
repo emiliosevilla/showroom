@@ -10,6 +10,8 @@
 
 **Branch:** `feat/finish-pending` (off `dev`). Do not commit on `dev`/`pre`/`prod`.
 
+**Status (2026-08-12):** Tasks 1–5 **DONE** (merged to `dev` via PR #11 + follow-up QA). Phase 5 packaging remains deferred (see `docs/task.md`). Follow-up UX: sidebar click-only activation; hover dwell only during DnD.
+
 ## Global Constraints
 
 - Do not change product behavior (scan limits, DnD rules, export, i18n languages).
@@ -23,9 +25,9 @@
 
 ## Current state (do not redo)
 
-Already done: Phase 1 FS security, Phase 2 i18n, component extraction (`FileItem`, `ContainerColumn`, `ListViewTable`, `SplitMasterItem`, `PreviewTooltip`, `DroppableAreas`, `Modals/*` with `<dialog>`), `src/utils/theme.tsx`.
+Already done: Phase 1 FS security, Phase 2 i18n, component extraction (`FileItem`, `ContainerColumn`, `ListViewTable`, `SplitMasterItem`, `PreviewTooltip`, `DroppableAreas`, `Modals/*` with `<dialog>`), `src/utils/theme.tsx`, hooks `useFileSystem` + `useDragAndDrop`, i18n key fix, docs sync, lint/build gate, Dependabot branch cleanup, QA fixes, scan-limits automated test, sidebar click-only + DnD hover dwell.
 
-Still open: missing i18n key usage, hooks extraction, docs sync, lint/build verification, stale Dependabot remote branch cleanup.
+Still open (out of this plan): **Fase 5 empaquetado** (aplazado).
 
 ---
 
@@ -35,10 +37,10 @@ Still open: missing i18n key usage, hooks extraction, docs sync, lint/build veri
 - Modify: `src/components/Modals/ContainerSettingsModal.tsx`
 - Modify: `src/i18n/translations.ts` (only if adding a key; prefer reusing `container_settings`)
 
-- [ ] **Step 1:** Confirm `t("container_appearance")` fails `tsc` because the key is absent; `container_settings` already maps to "Apariencia del Contenedor" / English equivalent.
-- [ ] **Step 2:** Replace `t("container_appearance")` with `t("container_settings")` (or add the missing key to **all** languages in `translations.ts` if a distinct key is intentionally required — default: reuse `container_settings`).
-- [ ] **Step 3:** Run `npm run lint` and confirm this specific error is gone.
-- [ ] **Step 4:** Commit: `fix(i18n): use container_settings key in ContainerSettingsModal`
+- [x] **Step 1:** Confirm `t("container_appearance")` fails `tsc` because the key is absent; `container_settings` already maps to "Apariencia del Contenedor" / English equivalent.
+- [x] **Step 2:** Replace `t("container_appearance")` with `t("container_settings")` (or add the missing key to **all** languages in `translations.ts` if a distinct key is intentionally required — default: reuse `container_settings`).
+- [x] **Step 3:** Run `npm run lint` and confirm this specific error is gone.
+- [x] **Step 4:** Commit: `fix(i18n): use container_settings key in ContainerSettingsModal`
 
 ---
 
@@ -56,10 +58,10 @@ Include at minimum (names may match existing App locals):
 
 Keep classification / editor UI state in `App` unless a piece is exclusively owned by the scan flow. Pass `t`, `classifyFiles`, `commit`/`setClassification` setters as needed so behavior stays identical.
 
-- [ ] **Step 1:** Create `src/hooks/useFileSystem.ts` exporting `useFileSystem(...)` with a clear typed return object.
-- [ ] **Step 2:** Wire `App.tsx` to the hook; delete duplicated handler bodies from App.
-- [ ] **Step 3:** Run `npm run lint` and `npm run build`.
-- [ ] **Step 4:** Commit: `refactor: extract useFileSystem hook from App`
+- [x] **Step 1:** Create `src/hooks/useFileSystem.ts` exporting `useFileSystem(...)` with a clear typed return object.
+- [x] **Step 2:** Wire `App.tsx` to the hook; delete duplicated handler bodies from App.
+- [x] **Step 3:** Run `npm run lint` and `npm run build`.
+- [x] **Step 4:** Commit: `refactor: extract useFileSystem hook from App`
 
 ---
 
@@ -73,10 +75,10 @@ Extract dnd-kit sensors setup and `handleDragStart` / `handleDragOver` / `handle
 
 The hook must accept the classification mutation helper currently used in App (e.g. `commitClassificationChange`), `selectedFiles` / setters, `focusedContainerId` / setters, `trashOriginalLocations` / setters, `t`, and return `{ sensors, activeId, fileDropFeedback, handleDragStart, handleDragOver, handleDragEnd }` (or equivalent names already used by JSX).
 
-- [ ] **Step 1:** Create `src/hooks/useDragAndDrop.ts`.
-- [ ] **Step 2:** Wire `App.tsx`; remove duplicated drag handlers/sensors from App.
-- [ ] **Step 3:** Run `npm run lint` and `npm run build`.
-- [ ] **Step 4:** Commit: `refactor: extract useDragAndDrop hook from App`
+- [x] **Step 1:** Create `src/hooks/useDragAndDrop.ts`.
+- [x] **Step 2:** Wire `App.tsx`; remove duplicated drag handlers/sensors from App.
+- [x] **Step 3:** Run `npm run lint` and `npm run build`.
+- [x] **Step 4:** Commit: `refactor: extract useDragAndDrop hook from App`
 
 ---
 
@@ -86,10 +88,10 @@ The hook must accept the classification mutation helper currently used in App (e
 - Modify: `docs/task.md`
 - Modify: `docs/implementation_plan.md`
 
-- [ ] **Step 1:** Mark completed Phase 3 component extraction items as `[x]` in `docs/task.md`.
-- [ ] **Step 2:** Mark hooks extraction complete once Tasks 2–3 landed; leave Phase 4 verification notes accurate (lint/build automated; manual DnD/scan still recommended).
-- [ ] **Step 3:** Update `docs/implementation_plan.md` open question: modals already use `<dialog>` — document as decided/done; note `App.tsx` line count after hooks (~target was 800; record actual).
-- [ ] **Step 4:** Commit: `docs: sync Phase 3 status after hooks extraction`
+- [x] **Step 1:** Mark completed Phase 3 component extraction items as `[x]` in `docs/task.md`.
+- [x] **Step 2:** Mark hooks extraction complete once Tasks 2–3 landed; leave Phase 4 verification notes accurate (lint/build automated; manual DnD/scan still recommended).
+- [x] **Step 3:** Update `docs/implementation_plan.md` open question: modals already use `<dialog>` — document as decided/done; note `App.tsx` line count after hooks (~target was 800; record actual).
+- [x] **Step 4:** Commit: `docs: sync Phase 3 status after hooks extraction`
 
 ---
 
@@ -97,19 +99,19 @@ The hook must accept the classification mutation helper currently used in App (e
 
 **Files:** none required (ops + report in commit message / SDD report only). Optional: none.
 
-- [ ] **Step 1:** Run `npm run lint` — must exit 0.
-- [ ] **Step 2:** Run `npm run build` — must exit 0.
-- [ ] **Step 3:** Confirm `App.tsx` line count and that `src/hooks/useFileSystem.ts` + `src/hooks/useDragAndDrop.ts` exist.
-- [ ] **Step 4:** Note in the task report that remote branch `origin/dependabot/npm_and_yarn/npm_and_yarn-f517038d3b` is stale (fix already on `dev`) and should be deleted by the human with:
+- [x] **Step 1:** Run `npm run lint` — must exit 0.
+- [x] **Step 2:** Run `npm run build` — must exit 0.
+- [x] **Step 3:** Confirm `App.tsx` line count and that `src/hooks/useFileSystem.ts` + `src/hooks/useDragAndDrop.ts` exist.
+- [x] **Step 4:** Note in the task report that remote branch `origin/dependabot/npm_and_yarn/npm_and_yarn-f517038d3b` is stale (fix already on `dev`) and should be deleted by the human with:
   `git push origin --delete dependabot/npm_and_yarn/npm_and_yarn-f517038d3b`
   Do **not** delete remote branches from the agent if git pushes are restricted; leave the exact command in the report.
-- [ ] **Step 5:** If any code tweak was needed for green lint/build, commit: `chore: verify Phase 3 completion`. Otherwise no commit — report DONE with evidence only.
+- [x] **Step 5:** If any code tweak was needed for green lint/build, commit: `chore: verify Phase 3 completion`. Otherwise no commit — report DONE with evidence only.
 
 ---
 
 ## Out of scope
 
-- New features, redesign, purple/dark-mode theme changes.
+- **Fase 5 empaquetado** (aplazado a otro día; ver `docs/task.md`).
 - Cascading merges to `pre`/`prod` (separate `/git` ship).
 - Closing GitHub Dependabot alerts (already fixed on `dev`; UI lag is GitHub-side).
-- Full manual QA in a browser (recommend after merge; not blocking this plan’s automated gate).
+- Full redesign / purple/dark-mode theme changes.

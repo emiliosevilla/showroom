@@ -7,6 +7,7 @@ import { FileEntry } from '../utils/fileSystem';
 import { renderIcon } from '../utils/theme';
 import { FileItem } from './FileItem';
 import { GridDroppableArea } from './DroppableAreas';
+import { Tooltip } from './Tooltip';
 
 export const ContainerColumn = ({ existingNames = [], id, name, color, icon, files, scannedFiles, onUpdateContainer, onCustomizeContainer, isExpanded = true, onToggleExpand, isTrash = false, onTrashAction, onSort, onDeleteContainer,
   selectedFiles = new Set(), activeId = null, onFileClick, onFavoriteToggle, onDoubleClickFile, onSelectAll, onDeselectAll, fileDropFeedback = {}, requestConfirm
@@ -209,12 +210,16 @@ export const ContainerColumn = ({ existingNames = [], id, name, color, icon, fil
               </button>
               {containerSelectedFiles.length > 0 ? (
                 <div className="flex items-center gap-2">
-                  <button onClick={handleRestoreSelected} className="flex items-center text-emerald-600 hover:text-emerald-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1" title={t("restore_selected") || "Restaurar seleccionados"} aria-label={t("restore_selected") || "Restaurar seleccionados"}>
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
-                  <button onClick={handleDeleteSelected} className="flex items-center text-red-600 hover:text-red-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-1" title={t("delete_selected") || "Eliminar seleccionados"} aria-label={t("delete_selected") || "Eliminar seleccionados"}>
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <Tooltip content={t("restore_selected")}>
+                    <button onClick={handleRestoreSelected} className="flex items-center text-emerald-600 hover:text-emerald-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1" aria-label={t("restore_selected")}>
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                  </Tooltip>
+                  <Tooltip content={t("delete_selected")}>
+                    <button onClick={handleDeleteSelected} className="flex items-center text-red-600 hover:text-red-700 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-1" aria-label={t("delete_selected")}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </Tooltip>
                 </div>
               ) : (
                 <button 
@@ -271,6 +276,7 @@ export const ContainerColumn = ({ existingNames = [], id, name, color, icon, fil
                   </button>
                 )}
                 {id.startsWith('custom-') && typeof onDeleteContainer === 'function' && files.length === 0 && (
+                   <Tooltip content={t("delete_this_container")}>
                    <button 
                     onClick={() => {
                       doConfirm(`${t('delete_container_q') || '¿Eliminar contenedor'} \"${name}\"?`, () => {
@@ -278,12 +284,12 @@ export const ContainerColumn = ({ existingNames = [], id, name, color, icon, fil
                       });
                     }}
                     className="flex items-center text-xs hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded p-1"
-                    title={t("delete_this_container") || "Eliminar contenedor"}
                     aria-label={`Eliminar contenedor ${name}`}
                   >
                     <Trash2 className="w-4 h-4 mr-1" />
                     Eliminar
                   </button>
+                  </Tooltip>
                 )}
               </div>
             </div>

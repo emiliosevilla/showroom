@@ -3,6 +3,7 @@ import { scanDirectory, FileEntry, processFileList } from '../utils/fileSystem';
 import { classifyFiles, ClassificationResult } from '../services/classifier';
 import { setKey } from '../utils/idb';
 import { TranslationKey } from '../i18n/translations';
+import { shouldUseFolderInputFallback } from '../utils/embedContext';
 
 export type AppStep = 'input' | 'scanning' | 'classifying' | 'editor';
 
@@ -173,7 +174,7 @@ export function useFileSystem({
   const handleSelectFolder = async () => {
     setErrorMsg('');
 
-    if (!('showDirectoryPicker' in window)) {
+    if (shouldUseFolderInputFallback()) {
       fileInputRef.current?.click();
       return;
     }
