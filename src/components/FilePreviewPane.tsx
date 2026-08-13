@@ -43,7 +43,15 @@ function IconFallbackPreview({
 
     const native = getNativeBridge();
     const target = fileEntry.absolutePath || fileEntry.path;
-    if (!native?.getFileIcon || !target) {
+    // Skip native icons on macOS — app.getFileIcon can crash Electron on Tahoe (macOS 26).
+    const isDarwin = typeof navigator !== 'undefined' && /Macintosh|Mac OS X/i.test(navigator.userAgent);
+    if (!native?.getFileIcon || !target || isDarwin) {
+      setNativeTried(true);
+      return;
+    }
+    // Prefer OS icons only for binaries/bundles where Lucide is a weak stand-in.
+    const OS_ICON_EXTS = new Set(['exe', 'msi', 'app', 'dmg', 'pkg', 'apk', 'bat', 'cmd', 'com']);
+    if (ext && !OS_ICON_EXTS.has(ext)) {
       setNativeTried(true);
       return;
     }
@@ -63,7 +71,7 @@ function IconFallbackPreview({
     return () => {
       cancelled = true;
     };
-  }, [fileEntry.path, fileEntry.absolutePath]);
+  }, [fileEntry.path, fileEntry.absolutePath, ext]);
 
   return (
     <div className={`flex flex-col items-center justify-center h-full text-text-secondary gap-4 p-6 ${className}`}>
