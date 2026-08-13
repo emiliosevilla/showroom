@@ -52,8 +52,8 @@ export function FilePropertiesPanel({
   const na = t('not_available_browser');
 
   return (
-    <div className={`flex flex-col min-h-0 overflow-hidden ${className}`}>
-      <div className="shrink-0 px-3 py-2 border-b border-border-lite">
+    <div className={`grid grid-cols-1 sm:grid-cols-2 min-h-0 overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border-lite ${className}`}>
+      <div className="min-h-0 overflow-y-auto px-3 py-2 custom-scrollbar">
         <h4 className="text-xs font-bold text-text-primary uppercase tracking-wide mb-2">{t('file_properties')}</h4>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px]">
           <dt className="text-text-secondary">{t('prop_type')}</dt>
@@ -70,7 +70,7 @@ export function FilePropertiesPanel({
           <dd className="text-text-primary">{formatBytes(entry.size)}</dd>
         </dl>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 custom-scrollbar">
+      <div className="min-h-0 overflow-y-auto p-3 custom-scrollbar">
         <h4 className="text-xs font-bold text-text-primary uppercase tracking-wide mb-2">{t('file_actions')}</h4>
         <FileActionMenu
           entry={entry}
