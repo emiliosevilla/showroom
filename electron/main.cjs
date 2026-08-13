@@ -163,11 +163,16 @@ function registerIpc() {
   });
 
   ipcMain.handle('native:getFileIcon', async (_evt, workspaceRoot, relativeOrAbs) => {
+    // macOS 26 (Tahoe)+Electron: app.getFileIcon can SIGTRAP in ThreadPoolForegroundWorker.
+    // See Electron community reports; use Lucide type icons on Darwin instead.
+    if (process.platform === 'darwin') return null;
     const abs = resolveUnderRoot(workspaceRoot, relativeOrAbs);
     try {
-      const image = await app.getFileIcon(abs, { size: 'large' });
+      const image = await app.getFileIcon(abs, { size: 'normal' });
       if (!image || image.isEmpty()) return null;
-      return image.toDataURL();
+      const png = image.toPNG();
+      if (!png || png.length === 0 || png.length > 1_500_000) return null;
+      return `data:image/png;base64,${png.toString('base64')}`;
     } catch {
       return null;
     }

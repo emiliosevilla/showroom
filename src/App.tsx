@@ -1002,7 +1002,7 @@ export default function App() {
                   >
                     {viewMode === 'grid' ? (
                       <div className="flex w-full h-full gap-4 px-1 pt-1">
-                         <div className="w-1/3 min-w-[250px] max-w-[350px] flex flex-col gap-2 overflow-y-auto pl-1 pr-3 pt-1 custom-scrollbar pb-6 relative z-10 text-left">
+                         <div className="w-1/4 min-w-[188px] max-w-[263px] flex flex-col gap-2 overflow-y-auto pl-1 pr-3 pt-1 custom-scrollbar pb-6 relative z-10 text-left">
                            <SortableContext 
                              items={filteredClassification.containers.map(c => c.id)}
                              strategy={verticalListSortingStrategy}
@@ -1242,14 +1242,14 @@ export default function App() {
                                                   <FilePreviewPane
                                                     fileEntry={previewEntry}
                                                     name={previewEntry?.name}
-                                                    className="flex-[3] min-h-0 border-b border-border-lite"
+                                                    className="flex-1 min-h-0 border-b border-border-lite"
                                                   />
                                                   <FilePropertiesPanel
                                                     entry={previewEntry}
                                                     selectedPaths={selectedPaths}
                                                     entriesByPath={entriesByPath}
                                                     containerId={focusedContainer.id}
-                                                    className="flex-[2] min-h-[140px]"
+                                                    className="shrink-0 max-h-[40%] min-h-[120px]"
                                                     app={{
                                                       toggleFavorite: (path) => {
                                                         const key = `favorite-${path}`;
