@@ -32,7 +32,9 @@
   - `[ ]` NSIS `.exe` (Wine o runner Windows).
   - `[ ]` Icono de app propio (electron-builder avisó: default Electron icon).
   - `[x]` Smoke automatizable (2026-08-13): `npm run lint` OK; `test:scan-limits` 5/5; binario `.app` arranca (`env -u ELECTRON_RUN_AS_NODE`); zip Windows `unzip -t` OK.
+  - `[x]` Crash macOS 26 Tahoe: `app.getFileIcon` → EXC_BREAKPOINT en ThreadPoolForegroundWorker; desactivado en Darwin (fallback Lucide).
   - `[ ]` Smoke QA manual UI (abrir carpeta, containers, preview, sesiones, búsqueda) en Finder / Windows.
+  - `[ ]` Valorar upgrade Electron (37 → 43+) para mejor soporte Tahoe.
 
 - `[x]` **Fase 6: Producto virtual seguro (2026-08)**
   - `[x]` Sin papelera / sin subcarpetas; contenedor **Otros** siempre presente.
