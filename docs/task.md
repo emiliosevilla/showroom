@@ -20,7 +20,7 @@
   - `[x]` Footer solo en bienvenida.
 
 - `[x]` **Fase 5: Distribución como ejecutable (Electron)**
-  - `[x]` Stack: Electron 37 + electron-builder.
+  - `[x]` Stack: Electron 43 + electron-builder.
   - `[x]` Shell + NativeBridge (`electron/main.cjs`, `preload.cjs`).
   - `[x]` Pack lean: solo `dist/` + `electron/` (sin `node_modules` en el asar); deps de frontend en `devDependencies`.
   - `[x]` Limpieza: eliminados `patch.js`, `patch_out.js`, `metadata.json`, deps muertas (`@google/genai`, `express`, …).
@@ -34,8 +34,9 @@
   - `[x]` Icono de app: `electron/icons/icon.svg` (electron-builder lo convierte a icns/ico). Reemplazar el SVG si se quiere marca definitiva.
   - `[x]` Smoke automatizable (2026-08-13): `npm run lint` OK; `test:scan-limits` 5/5; binario `.app` arranca (`env -u ELECTRON_RUN_AS_NODE`); zip Windows `unzip -t` OK.
   - `[x]` Crash macOS 26 Tahoe: `app.getFileIcon` → EXC_BREAKPOINT en ThreadPoolForegroundWorker; desactivado en Darwin (fallback Lucide).
+  - `[x]` Electron 37 → 43.4.0 (cierra alertas Dependabot de Electron EOL; `pickFolder` recuerda última carpeta por el defaultPath de 43).
   - `[ ]` Smoke QA manual UI (abrir carpeta, containers, preview, sesiones, búsqueda) en Finder / Windows.
-  - `[ ]` Valorar upgrade Electron (37 → 43+) para mejor soporte Tahoe.
+  - `[x]` Valorar upgrade Electron (37 → 43+) para mejor soporte Tahoe.
 
 - `[x]` **Fase 6: Producto virtual seguro (2026-08)**
   - `[x]` Sin papelera / sin subcarpetas; contenedor **Otros** siempre presente.
