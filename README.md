@@ -21,7 +21,7 @@
 | **Mac** (Apple Silicon) | [showroom-mac-arm64.dmg](https://github.com/emiliosevilla/showroom/releases/latest/download/showroom-mac-arm64.dmg) |
 | **Windows** | [showroom-win-x64.zip](https://github.com/emiliosevilla/showroom/releases/latest/download/showroom-win-x64.zip) |
 
-Those links always mean **the newest [GitHub Release](https://github.com/emiliosevilla/showroom/releases/latest)** built from [`prod`](https://github.com/emiliosevilla/showroom/tree/prod). If the file is missing, no release has been published yet — wait for the first one, or use [Run from source](#run-from-source).
+Those links always mean **the newest [GitHub Release](https://github.com/emiliosevilla/showroom/releases/latest)** built from [`prod`](https://github.com/emiliosevilla/showroom/tree/prod).
 
 Builds are unsigned (no App Store / Play Store).
 
@@ -73,7 +73,7 @@ Use it when you want to **think** about how a folder is organized (Downloads, pr
 3. Two layouts: **Total** (sidebar + focused container + preview) and **Individual** (one column per container).
 4. The welcome screen lists the last 10 folders A–Z and restores their containers.
 
-Scan limits: 100 folders / 1000 files per scan.
+Scan limits to prevent overload: 100 subfolders / 1000 files, per scan.
 
 ---
 
@@ -104,5 +104,11 @@ Packs skip code signing. Icon: `electron/icons/icon.svg`. Other scripts: `npm ru
 ## Stack
 
 Vite 6, React 19, TypeScript, Tailwind CSS v4, Electron 43, electron-builder.
+
+---
+
+## Author
+
+[Emilio Sevilla Ortego](https://github.com/emiliosevilla)
 
 License: [MIT](LICENSE.md). Roadmap: [`docs/task.md`](docs/task.md). Contributions: [CONTRIBUTING.md](CONTRIBUTING.md).
