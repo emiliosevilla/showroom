@@ -1,73 +1,100 @@
 # showroom
 
-Espacio virtual para organizar carpetas locales. Corre 100% en tu máquina (navegador o app de escritorio Electron): escanea una carpeta, clasifica archivos en contenedores semánticos y te deja reorganizarlos con drag & drop **sin tocar el disco**.
+A **virtual workspace** for a local folder. Scan a directory, sort files into semantic containers, and rearrange them with drag-and-drop **without changing anything on disk**.
 
-No hay backend: nada sale de tu equipo. En escritorio puedes abrir **cualquier carpeta**; el entorno virtual no ofrece acciones destructivas (no borra ni mueve archivos originales).
+Everything runs on your machine (browser or desktop). There is no backend and nothing is uploaded.
 
-## Por qué no es “otro Finder / Explorer”
+---
 
-| Explorador nativo | showroom |
-|---|---|
-| Organiza la jerarquía real del disco | Organiza una **vista virtual** (contenedores) sin reescribir carpetas |
-| Mover / borrar cambia el sistema de archivos | Solo reordena la clasificación en memoria + sesión |
-| Una carpeta = una estructura fija | Recuerda la conformación de contenedores de las **últimas 10** carpetas |
-| Búsqueda genérica del SO | Búsqueda con tokens, filtros por tipo y agrupación |
+## Try a demo
 
-Úsalo cuando quieras **pensar** cómo está organizada una carpeta (Downloads, proyectos, entregas) sin miedo a romper nada.
-
-## Cómo funciona
-
-1. **Selecciona una carpeta** — File System Access API, fallback `<input webkitdirectory>`, o diálogo nativo en Electron.
-2. **Escanea + clasifica** por extensión (`src/services/classifier.ts`). Siempre hay un contenedor **Otros**. Metadatos se hidratan bajo demanda con `ensureFileHydrated`.
-3. **Edita** en dos layouts:
-   - **Total**: sidebar + contenedor enfocado (lista | preview + propiedades + acciones).
-   - **Individual**: todos los contenedores en columnas.
-4. **Sesión**: al volver a la bienvenida, las últimas 10 carpetas aparecen en orden alfabético; al reabrirlas se restaura la distribución de contenedores.
-
-## Características
-
-- Clasificación automática + contenedor **Otros** (sin papelera ni subcarpetas).
-- Preview in-panel, favoritos, undo/redo, dark mode, i18n ES/EN.
-- Búsqueda inteligente (nombre / ruta / extensión), filtros y agrupar por extensión o contenedor.
-- Acciones no destructivas (abrir, descargar, compartir, copiar ruta, favorito; en desktop `revealInFolder` / `openWith`).
-- Límites de escaneo (100 carpetas / 1000 archivos).
-
-## Ejecutar en local (navegador)
+You need [Node.js 20+](https://nodejs.org/) and git.
 
 ```bash
+git clone https://github.com/emiliosevilla/showroom.git
+cd showroom
 npm install
 npm run dev
 ```
 
+Open the URL Vite prints (usually `http://localhost:3000`). Choose a folder on your computer — Downloads or the Desktop is enough. showroom classifies files into containers; you can search, preview, and drag items around. Closing the tab does not move or delete those files.
+
+For the desktop window instead of the browser:
+
 ```bash
-npm run build
-npm run preview
-npm run lint
-npm run test:scan-limits
-npm run clean
-npm run dev:cursor       # /cursor.html embed host
+npm run electron:dev
 ```
 
-## App de escritorio (Electron)
+The UI is available in English and Spanish (selector in the header).
+
+---
+
+## Download and install
+
+Packaged apps are attached to [GitHub Releases](https://github.com/emiliosevilla/showroom/releases) (not the App Store or Play Store). Builds are **unsigned**.
+
+| Platform | File |
+|---|---|
+| macOS (Apple Silicon) | `showroom-*-arm64.dmg` or `showroom-*-arm64-mac.zip` |
+| Windows (x64) | `showroom-*-win.zip` |
+
+If there is no release yet, use [Try a demo](#try-a-demo) or package locally (`npm run electron:pack:mac` / `npm run electron:pack:win`).
+
+### macOS
+
+1. Open the `.dmg` and drag **showroom** into Applications (or unzip the `-mac.zip`).
+2. First launch: **Control-click** the app → **Open**, then confirm. Gatekeeper warns because the build is not notarized.
+3. Later launches work from Launchpad or Spotlight as usual.
+
+### Windows
+
+1. Unzip `showroom-*-win.zip`.
+2. Run `showroom.exe`.
+3. If SmartScreen appears: **More info** → **Run anyway** (unknown publisher, unsigned zip).
+
+---
+
+## What it is (and is not)
+
+| Finder / Explorer | showroom |
+|---|---|
+| Organizes the real folder tree | Organizes a **virtual** view (containers) without rewriting folders |
+| Move / delete changes the filesystem | Only the classification in memory + session changes |
+| One folder → one fixed layout | Remembers container layout for the **last 10** folders |
+| OS-wide search | Tokens, type filters, group-by extension or container |
+
+Use it when you want to **think** about how a folder is organized (Downloads, project dumps, handoffs) without risking the originals. There is no trash, no zip export, and no destructive file actions.
+
+---
+
+## How it works
+
+1. Pick a folder (File System Access API, `<input webkitdirectory>`, or a native dialog in Electron).
+2. Files are classified by extension. An **Others** container is always present.
+3. Two layouts: **Total** (sidebar + focused container + preview) and **Individual** (one column per container).
+4. Coming back to the welcome screen lists the last 10 folders A–Z and restores their containers.
+
+Scan limits: 100 folders / 1000 files per scan.
+
+---
+
+## Package from source
 
 ```bash
-npm run electron:dev       # build UI + ventana Electron
-npm run electron:pack:mac  # → release/*.dmg y *-mac.zip (arm64)
+npm run electron:pack:mac  # → release/*.dmg and *-mac.zip (arm64)
 npm run electron:pack:win  # → release/*-win.zip (x64)
 ```
 
-Artefactos en `release/` (gitignored). Icono: `electron/icons/icon.svg`. Distribución prevista por **GitHub público**, sin App Store ni Play Store: los packs **no se firman** (`mac.identity: null`) y electron-builder no consulta el llavero. En macOS, la primera vez: clic derecho → Abrir (Gatekeeper). En Windows, SmartScreen puede avisar de editor desconocido.
+Output is gitignored under `release/`. Packs skip code signing (`mac.identity: null`); electron-builder does not read your keychain. App icon source: `electron/icons/icon.svg`.
 
-Código del shell: `electron/main.cjs`, `electron/preload.cjs`. Empaquetado: `electron-builder.yml` (solo `dist/` + `electron/`).
+Other scripts: `npm run build`, `npm run preview`, `npm run lint`, `npm run test:scan-limits`, `npm run clean`.
 
-Si falla la descarga de Electron desde GitHub, los scripts ya usan `ELECTRON_MIRROR=https://cdn.npmmirror.com/binaries/electron/`.
+If Electron’s GitHub download fails, the pack scripts already set `ELECTRON_MIRROR=https://cdn.npmmirror.com/binaries/electron/`.
+
+---
 
 ## Stack
 
-Vite 6 + React 19 + TypeScript, Tailwind CSS v4, `@dnd-kit`, `recharts`, `lucide-react`, `motion`, Electron 43 + electron-builder.
+Vite 6, React 19, TypeScript, Tailwind CSS v4, Electron 43, electron-builder.
 
-Licencia: [MIT](LICENSE.md). Roadmap: [`docs/task.md`](docs/task.md).
-
-## Contribuir
-
-Forks y Pull Requests — ver [CONTRIBUTING.md](CONTRIBUTING.md).
+License: [MIT](LICENSE.md). Roadmap: [`docs/task.md`](docs/task.md). Contributions: [CONTRIBUTING.md](CONTRIBUTING.md).
