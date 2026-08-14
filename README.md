@@ -29,8 +29,18 @@ Builds are unsigned (no App Store / Play Store).
 
 1. Click the Mac link. Open the `.dmg`.
 2. Drag **showroom** into **Applications**.
-3. Open it from Applications. If Mac says it can’t be opened: **Control-click** → **Open** → **Open**.
-4. Next times: click the icon as usual.
+3. Open it from Applications.
+
+The first launch will likely say the app is **damaged** and should go to the Trash. It is not damaged: the build is unsigned, and macOS Gatekeeper labels GitHub downloads that way (Control-click → Open does not help on Apple Silicon). In Terminal:
+
+```bash
+xattr -cr /Applications/showroom.app
+open /Applications/showroom.app
+```
+
+If the `.dmg` itself refuses to open, run `xattr -cr ~/Downloads/showroom-mac-arm64.dmg` first, then open it again.
+
+Next times: click the icon as usual. The only lasting fix is Apple Developer ID + notarization ($99/year).
 
 ### Windows
 
