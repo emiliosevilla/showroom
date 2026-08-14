@@ -105,4 +105,10 @@ Packs skip code signing. Icon: `electron/icons/icon.svg`. Other scripts: `npm ru
 
 Vite 6, React 19, TypeScript, Tailwind CSS v4, Electron 43, electron-builder.
 
+---
+
+## Author
+
+[Emilio Sevilla Ortego](https://github.com/emiliosevilla)
+
 License: [MIT](LICENSE.md). Roadmap: [`docs/task.md`](docs/task.md). Contributions: [CONTRIBUTING.md](CONTRIBUTING.md).
