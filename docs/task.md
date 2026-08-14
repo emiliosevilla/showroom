@@ -25,12 +25,11 @@
   - `[x]` Pack lean: solo `dist/` + `electron/` (sin `node_modules` en el asar); deps de frontend en `devDependencies`.
   - `[x]` Limpieza: eliminados `patch.js`, `patch_out.js`, `metadata.json`, deps muertas (`@google/genai`, `express`, …).
   - `[x]` Scripts con `env -u ELECTRON_RUN_AS_NODE` (evita fallo en entornos Cursor).
-  - `[x]` Artefactos regenerados (2026-08-14, icono SVG + zip Windows al día):
-    - macOS: `release/showroom-0.1.0-arm64.dmg`, `release/showroom-0.1.0-arm64-mac.zip`
-    - Windows x64: `release/showroom-0.1.0-win.zip`
+  - `[x]` Artefactos: nombres estables `showroom-mac-arm64.dmg` / `showroom-win-x64.zip` (`artifactName`) para `/releases/latest/download/…`.
+  - `[x]` Icono de app: cara alegre con ojos grandes (`electron/icons/icon.svg` + `icon.png`); visible en README.
   - `[x]` Firma omitida a propósito: distribución por GitHub público, no App Store / Play Store. `mac.identity: null` + `CSC_IDENTITY_AUTO_DISCOVERY=false` (no consulta el llavero). Gatekeeper: clic derecho → Abrir; Windows: aviso SmartScreen de editor desconocido.
   - `[ ]` NSIS `.exe` (Wine o runner Windows) — opcional; el zip portable es el artefacto Windows.
-  - `[x]` Icono de app: `electron/icons/icon.svg` (electron-builder lo convierte a icns/ico). Reemplazar el SVG si se quiere marca definitiva.
+  - `[x]` Icono de app: `electron/icons/icon.svg` (cara / ojos; electron-builder → icns/ico).
   - `[x]` Smoke automatizable (2026-08-13): `npm run lint` OK; `test:scan-limits` 5/5; binario `.app` arranca (`env -u ELECTRON_RUN_AS_NODE`); zip Windows `unzip -t` OK.
   - `[x]` Crash macOS 26 Tahoe: `app.getFileIcon` → EXC_BREAKPOINT en ThreadPoolForegroundWorker; desactivado en Darwin (fallback Lucide).
   - `[x]` Electron 37 → 43.4.0 (cierra alertas Dependabot de Electron EOL; `pickFolder` recuerda última carpeta por el defaultPath de 43).
