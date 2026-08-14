@@ -1,8 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none">
   <rect width="1024" height="1024" rx="220" fill="#4338CA"/>
-  <rect x="160" y="160" width="704" height="704" rx="80" fill="#EEF2FF"/>
-  <rect x="232" y="232" width="248" height="248" rx="40" fill="#A5B4FC"/>
-  <rect x="544" y="232" width="248" height="248" rx="40" fill="#818CF8"/>
-  <rect x="232" y="544" width="248" height="248" rx="40" fill="#6366F1"/>
-  <rect x="544" y="544" width="248" height="248" rx="40" fill="#4F46E5"/>
+  <path
+    d="M708 292
+       C640 198 392 196 332 318
+       C284 412 372 478 524 520
+       C700 568 768 648 708 754
+       C648 858 380 868 316 760"
+    stroke="#F5F3FF"
+    stroke-width="128"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
 </svg>
