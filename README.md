@@ -56,7 +56,7 @@ npm run electron:pack:mac  # → release/*.dmg y *-mac.zip (arm64)
 npm run electron:pack:win  # → release/*-win.zip (x64)
 ```
 
-Artefactos en `release/` (gitignored). Builds sin firmar: en macOS puede hacer falta clic derecho → Abrir la primera vez.
+Artefactos en `release/` (gitignored). Icono: `electron/icons/icon.svg`. Builds **sin firmar** (hace falta Apple Developer Program → certificado *Developer ID Application* + notarización; en Windows, certificado Authenticode OV/EV). En macOS puede hacer falta clic derecho → Abrir la primera vez.
 
 Código del shell: `electron/main.cjs`, `electron/preload.cjs`. Empaquetado: `electron-builder.yml` (solo `dist/` + `electron/`).
 
