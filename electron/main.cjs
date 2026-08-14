@@ -9,6 +9,8 @@ const MAX_DEPTH = 20;
 
 /** @type {BrowserWindow | null} */
 let mainWindow = null;
+/** Last folder chosen in native:pickFolder — Electron 43+ otherwise always opens Downloads. */
+let lastPickedFolder = null;
 
 function isDev() {
   return !app.isPackaged;
@@ -125,9 +127,11 @@ function registerIpc() {
   ipcMain.handle('native:pickFolder', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory'],
+      ...(lastPickedFolder ? { defaultPath: lastPickedFolder } : {}),
     });
     if (result.canceled || !result.filePaths[0]) return null;
     const folderPath = result.filePaths[0];
+    lastPickedFolder = folderPath;
     return {
       path: folderPath,
       name: path.basename(folderPath),

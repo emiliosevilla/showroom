@@ -64,7 +64,7 @@ Si falla la descarga de Electron desde GitHub, los scripts ya usan `ELECTRON_MIR
 
 ## Stack
 
-Vite 6 + React 19 + TypeScript, Tailwind CSS v4, `@dnd-kit`, `recharts`, `lucide-react`, `motion`, Electron 37 + electron-builder.
+Vite 6 + React 19 + TypeScript, Tailwind CSS v4, `@dnd-kit`, `recharts`, `lucide-react`, `motion`, Electron 43 + electron-builder.
 
 Licencia: [MIT](LICENSE.md). Roadmap: [`docs/task.md`](docs/task.md).
 
