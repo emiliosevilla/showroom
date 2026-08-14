@@ -16,7 +16,10 @@ files:
 asar: true
 npmRebuild: false
 nodeGypRebuild: false
+forceCodeSigning: false
 mac:
+  # Public GitHub distribution — skip signing and do not scan the keychain.
+  identity: null
   category: public.app-category.utilities
   target:
     - dmg
