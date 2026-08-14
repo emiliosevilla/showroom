@@ -17,6 +17,8 @@ asar: true
 npmRebuild: false
 nodeGypRebuild: false
 forceCodeSigning: false
+# Stable names so README can use …/releases/latest/download/showroom-mac-arm64.dmg
+artifactName: ${productName}-${os}-${arch}.${ext}
 mac:
   # Public GitHub distribution — skip signing and do not scan the keychain.
   identity: null
