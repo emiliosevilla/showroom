@@ -16,10 +16,10 @@
     "lint": "tsc --noEmit",
     "test:scan-limits": "tsx --test scripts/test-scan-limits.ts",
     "electron:dev": "npm run build:electron && env -u ELECTRON_RUN_AS_NODE ELECTRON_MIRROR=https://cdn.npmmirror.com/binaries/electron/ electron .",
-    "electron:pack": "npm run build:electron && env -u ELECTRON_RUN_AS_NODE ELECTRON_MIRROR=https://cdn.npmmirror.com/binaries/electron/ electron-builder --mac --win zip",
-    "electron:pack:mac": "npm run build:electron && env -u ELECTRON_RUN_AS_NODE ELECTRON_MIRROR=https://cdn.npmmirror.com/binaries/electron/ electron-builder --mac",
-    "electron:pack:win": "npm run build:electron && env -u ELECTRON_RUN_AS_NODE ELECTRON_MIRROR=https://cdn.npmmirror.com/binaries/electron/ electron-builder --win zip --x64",
-    "electron:pack:win:zip": "npm run build:electron && env -u ELECTRON_RUN_AS_NODE ELECTRON_MIRROR=https://cdn.npmmirror.com/binaries/electron/ electron-builder --win zip --x64"
+    "electron:pack": "npm run build:electron && env -u ELECTRON_RUN_AS_NODE CSC_IDENTITY_AUTO_DISCOVERY=false ELECTRON_MIRROR=https://cdn.npmmirror.com/binaries/electron/ electron-builder --mac --win zip",
+    "electron:pack:mac": "npm run build:electron && env -u ELECTRON_RUN_AS_NODE CSC_IDENTITY_AUTO_DISCOVERY=false ELECTRON_MIRROR=https://cdn.npmmirror.com/binaries/electron/ electron-builder --mac",
+    "electron:pack:win": "npm run build:electron && env -u ELECTRON_RUN_AS_NODE CSC_IDENTITY_AUTO_DISCOVERY=false ELECTRON_MIRROR=https://cdn.npmmirror.com/binaries/electron/ electron-builder --win zip --x64",
+    "electron:pack:win:zip": "npm run build:electron && env -u ELECTRON_RUN_AS_NODE CSC_IDENTITY_AUTO_DISCOVERY=false ELECTRON_MIRROR=https://cdn.npmmirror.com/binaries/electron/ electron-builder --win zip --x64"
   },
   "devDependencies": {
     "@dnd-kit/core": "^6.3.1",

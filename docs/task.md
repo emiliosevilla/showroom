@@ -28,9 +28,8 @@
   - `[x]` Artefactos regenerados (2026-08-14, icono SVG + zip Windows al día):
     - macOS: `release/showroom-0.1.0-arm64.dmg`, `release/showroom-0.1.0-arm64-mac.zip`
     - Windows x64: `release/showroom-0.1.0-win.zip`
-  - `[ ]` Firma macOS: Apple Developer Program ($99/año) → certificado **Developer ID Application** en Keychain + notarización (`APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, `hardenedRuntime: true`). Hoy: 0 identidades de codesign válidas; el pack sigue unsigned (Gatekeeper: clic derecho → Abrir).
-  - `[ ]` Firma Windows: certificado Authenticode OV/EV (`WIN_CSC_LINK`) — no aplica al zip portable sin cert.
-  - `[ ]` NSIS `.exe` (Wine o runner Windows).
+  - `[x]` Firma omitida a propósito: distribución por GitHub público, no App Store / Play Store. `mac.identity: null` + `CSC_IDENTITY_AUTO_DISCOVERY=false` (no consulta el llavero). Gatekeeper: clic derecho → Abrir; Windows: aviso SmartScreen de editor desconocido.
+  - `[ ]` NSIS `.exe` (Wine o runner Windows) — opcional; el zip portable es el artefacto Windows.
   - `[x]` Icono de app: `electron/icons/icon.svg` (electron-builder lo convierte a icns/ico). Reemplazar el SVG si se quiere marca definitiva.
   - `[x]` Smoke automatizable (2026-08-13): `npm run lint` OK; `test:scan-limits` 5/5; binario `.app` arranca (`env -u ELECTRON_RUN_AS_NODE`); zip Windows `unzip -t` OK.
   - `[x]` Crash macOS 26 Tahoe: `app.getFileIcon` → EXC_BREAKPOINT en ThreadPoolForegroundWorker; desactivado en Darwin (fallback Lucide).
