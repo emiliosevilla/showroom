@@ -3,13 +3,16 @@ productName: showroom
 copyright: Copyright © Emilio Sevilla Ortego
 directories:
   output: release
-  buildResources: electron/build
+  # electron-builder auto-converts icon.svg → icns/ico. Path is not `build/`
+  # because that directory is gitignored (Vite output).
+  buildResources: electron/icons
 # Frontend is already bundled by Vite into dist/ — do not ship node_modules.
 files:
   - dist/**/*
   - electron/**/*
   - package.json
   - "!**/node_modules/**"
+  - "!electron/icons/**"
 asar: true
 npmRebuild: false
 nodeGypRebuild: false
