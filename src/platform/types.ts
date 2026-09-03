@@ -44,16 +44,20 @@ export interface NativeBridge {
   setWorkspaceRoot?(root: string): void;
   getWorkspaceRoot?(): string;
   pickFolder?(): Promise<{ path: string; name: string } | null>;
-  scanFolder?(rootPath?: string): Promise<Array<{
-    path: string;
-    name: string;
-    kind: 'file' | 'directory';
-    lastModified?: number;
-    size?: number;
-    createdAt?: number;
-    extension?: string;
-    absolutePath?: string;
-  }>>;
+  scanFolder?(rootPath?: string): Promise<{
+    entries: Array<{
+      path: string;
+      name: string;
+      kind: 'file' | 'directory';
+      lastModified?: number;
+      size?: number;
+      createdAt?: number;
+      extension?: string;
+      absolutePath?: string;
+    }>;
+    /** Relative paths of subfolders skipped for exceeding the per-subfolder entry cap. */
+    skippedFolders: string[];
+  }>;
   readFile?(relativeOrAbs: string): Promise<ArrayBuffer>;
   revealInFolder?(absoluteOrRelativePath: string): Promise<void>;
   openWith?(absoluteOrRelativePath: string): Promise<void>;

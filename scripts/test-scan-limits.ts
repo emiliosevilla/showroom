@@ -4,7 +4,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_FILES, MAX_FOLDERS, scanDirectory } from '../src/utils/fileSystem.ts';
+import { MAX_ENTRIES_PER_SUBFOLDER, MAX_FILES, MAX_FOLDERS, scanDirectory } from '../src/utils/fileSystem.ts';
 
 type MockEntry =
   | { kind: 'file'; name: string }
@@ -29,8 +29,8 @@ function mockDirectory(entries: MockEntry[]) {
 }
 
 test('exports documented scan limits', () => {
-  assert.equal(MAX_FOLDERS, 100);
-  assert.equal(MAX_FILES, 1000);
+  assert.equal(MAX_FOLDERS, 3000);
+  assert.equal(MAX_FILES, 25000);
 });
 
 test('allows up to MAX_FILES files', async () => {
@@ -39,7 +39,7 @@ test('allows up to MAX_FILES files', async () => {
     name: `f${i}.txt`,
   }));
   const result = await scanDirectory(mockDirectory(entries));
-  assert.equal(result.filter((e) => e.kind === 'file').length, MAX_FILES);
+  assert.equal(result.entries.filter((e) => e.kind === 'file').length, MAX_FILES);
 });
 
 test('throws LIMIT_EXCEEDED when files exceed MAX_FILES', async () => {
@@ -60,7 +60,7 @@ test('allows up to MAX_FOLDERS directories', async () => {
     children: [],
   }));
   const result = await scanDirectory(mockDirectory(entries));
-  assert.equal(result.filter((e) => e.kind === 'directory').length, MAX_FOLDERS);
+  assert.equal(result.entries.filter((e) => e.kind === 'directory').length, MAX_FOLDERS);
 });
 
 test('throws LIMIT_EXCEEDED when folders exceed MAX_FOLDERS', async () => {
@@ -73,4 +73,23 @@ test('throws LIMIT_EXCEEDED when folders exceed MAX_FOLDERS', async () => {
     () => scanDirectory(mockDirectory(entries)),
     (err: unknown) => err instanceof Error && err.message === 'LIMIT_EXCEEDED',
   );
+});
+
+test('skips a subfolder exceeding MAX_ENTRIES_PER_SUBFOLDER instead of failing the whole scan', async () => {
+  const hugeSubfolder: MockEntry = {
+    kind: 'directory',
+    name: 'node_modules',
+    children: Array.from({ length: MAX_ENTRIES_PER_SUBFOLDER + 1 }, (_, i) => ({
+      kind: 'file' as const,
+      name: `pkg${i}.js`,
+    })),
+  };
+  const entries: MockEntry[] = [
+    hugeSubfolder,
+    { kind: 'file', name: 'readme.md' },
+  ];
+  const result = await scanDirectory(mockDirectory(entries));
+  assert.deepEqual(result.skippedFolders, ['node_modules']);
+  assert.ok(result.entries.some((e) => e.kind === 'file' && e.name === 'readme.md'));
+  assert.equal(result.entries.some((e) => e.kind === 'file' && e.name.startsWith('pkg')), false);
 });

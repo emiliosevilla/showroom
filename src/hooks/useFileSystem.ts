@@ -25,6 +25,7 @@ export interface UseFileSystemParams {
   setIsDirty: Dispatch<SetStateAction<boolean>>;
   savedSessions: SavedSession[];
   setSavedSessions: Dispatch<SetStateAction<SavedSession[]>>;
+  showToast?: (message: string) => void;
 }
 
 export interface UseFileSystemReturn {
@@ -58,6 +59,7 @@ export function useFileSystem({
   setIsDirty,
   savedSessions,
   setSavedSessions,
+  showToast,
 }: UseFileSystemParams): UseFileSystemReturn {
   const [step, setStep] = useState<AppStep>('input');
   const [folderName, setFolderName] = useState('');
@@ -67,6 +69,12 @@ export function useFileSystem({
   const [errorMsg, setErrorMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const notifySkippedFolders = (skippedFolders: string[]) => {
+    if (skippedFolders.length > 0) {
+      showToast?.(t('folders_skipped_notice', skippedFolders.length));
+    }
+  };
 
   const enterEditor = (result: ClassificationResult) => {
     setClassification(finalizeClassification(result));
@@ -154,7 +162,7 @@ export function useFileSystem({
 
       if (session.workspacePath && native?.scanFolder) {
         native.setWorkspaceRoot?.(session.workspacePath);
-        const scanned = await native.scanFolder(session.workspacePath);
+        const { entries: scanned, skippedFolders } = await native.scanFolder(session.workspacePath);
         const filesDesc: FileEntry[] = scanned
           .filter((s) => s.kind === 'file')
           .map((s) => ({
@@ -176,6 +184,7 @@ export function useFileSystem({
           setStep('input');
           return;
         }
+        notifySkippedFolders(skippedFolders);
         const merged = await mergeLiveWithSaved(filesDesc, session);
         setClassification(merged);
         setExpandedContainers(new Set());
@@ -210,8 +219,11 @@ export function useFileSystem({
 
       abortControllerRef.current = new AbortController();
       let filesDesc: FileEntry[] = [];
+      let skippedFolders: string[] = [];
       try {
-        filesDesc = await scanDirectory(handle, '', abortControllerRef.current.signal);
+        const scanResult = await scanDirectory(handle, '', abortControllerRef.current.signal);
+        filesDesc = scanResult.entries;
+        skippedFolders = scanResult.skippedFolders;
       } catch (e: any) {
         if (e.message === 'LIMIT_EXCEEDED') {
           setErrorMsg(t('limit_exceeded_error'));
@@ -224,6 +236,7 @@ export function useFileSystem({
         return;
       }
       setScannedFiles(filesDesc);
+      notifySkippedFolders(skippedFolders);
 
       const merged = await mergeLiveWithSaved(filesDesc, session);
       setClassification(merged);
@@ -255,7 +268,7 @@ export function useFileSystem({
         if (!picked) return;
         setStep('scanning');
         native.setWorkspaceRoot?.(picked.path);
-        const scanned = await native.scanFolder(picked.path);
+        const { entries: scanned, skippedFolders } = await native.scanFolder(picked.path);
         const filesDesc: FileEntry[] = scanned
           .filter((s) => s.kind === 'file')
           .map((s) => ({
@@ -277,13 +290,20 @@ export function useFileSystem({
           setStep('input');
           return;
         }
+        notifySkippedFolders(skippedFolders);
         setStep('classifying');
         const result = await classifyFilesFn(filesDesc.slice(0, 2000));
         enterEditor(result);
         return;
       } catch (err: any) {
         console.error(err);
-        setErrorMsg(t('error_accessing_folder'));
+        // Electron wraps IPC errors as "Error invoking remote method '...': Error: LIMIT_EXCEEDED",
+        // so the original message survives only as a substring, not an exact match.
+        if (err?.message?.includes('LIMIT_EXCEEDED')) {
+          setErrorMsg(t('limit_exceeded_error'));
+        } else {
+          setErrorMsg(t('error_accessing_folder'));
+        }
         setStep('input');
         return;
       }
@@ -303,8 +323,11 @@ export function useFileSystem({
 
       abortControllerRef.current = new AbortController();
       let filesDesc: FileEntry[] = [];
+      let skippedFolders: string[] = [];
       try {
-        filesDesc = await scanDirectory(handle, '', abortControllerRef.current.signal);
+        const scanResult = await scanDirectory(handle, '', abortControllerRef.current.signal);
+        filesDesc = scanResult.entries;
+        skippedFolders = scanResult.skippedFolders;
       } catch (e: any) {
         if (e.message === 'LIMIT_EXCEEDED') {
           setErrorMsg(t('limit_exceeded_error'));
@@ -323,6 +346,7 @@ export function useFileSystem({
         setStep('input');
         return;
       }
+      notifySkippedFolders(skippedFolders);
 
       const cappedFiles = filesDesc.slice(0, 2000);
       setStep('classifying');

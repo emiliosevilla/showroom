@@ -83,7 +83,7 @@ Use it when you want to **think** about how a folder is organized (Downloads, pr
 3. Two layouts: **Total** (sidebar + focused container + preview) and **Individual** (one column per container).
 4. The welcome screen lists the last 10 folders A–Z and restores their containers.
 
-Scan limits to prevent overload: 100 subfolders / 1000 files, per scan.
+Scan limits to prevent overload: 3000 subfolders / 25000 files, per scan. Individual subfolders exceeding 2000 entries (e.g. `node_modules`) are skipped instead of failing the whole scan, with a notice listing how many were skipped.
 
 ---
 

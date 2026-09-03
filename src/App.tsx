@@ -138,6 +138,7 @@ export default function App() {
     setIsDirty,
     savedSessions,
     setSavedSessions,
+    showToast: (msg) => setRecentAction({ message: msg, timestamp: Date.now(), type: 'normal' }),
   });
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean; message: string; onConfirm: () => void;}>({ isOpen: false, message: '', onConfirm: () => {} });
 
