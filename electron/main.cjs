@@ -3,9 +3,11 @@ const path = require('path');
 const fs = require('fs/promises');
 const { existsSync } = require('fs');
 
-const MAX_FOLDERS = 100;
-const MAX_FILES = 1000;
+const MAX_FOLDERS = 3000;
+const MAX_FILES = 25000;
 const MAX_DEPTH = 20;
+/** Folders+files within a single subtree before it's skipped instead of failing the whole scan (e.g. node_modules). */
+const MAX_ENTRIES_PER_SUBFOLDER = 2000;
 
 /** @type {BrowserWindow | null} */
 let mainWindow = null;
@@ -28,6 +30,8 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      // Enables Chromium's built-in PDF viewer, needed to render blob: PDFs inside the preview iframe.
+      plugins: true,
     },
   });
 
@@ -45,10 +49,13 @@ function createWindow() {
 /**
  * @param {string} rootDir
  * @param {string} relative
- * @param {{ folderCount: number, fileCount: number }} counters
+ * @param {{ folderCount: number, fileCount: number, skippedFolders: string[] }} counters
+ * @param {{ count: number } | undefined} localCounters Set while inside a subtree being
+ *   throttled by MAX_ENTRIES_PER_SUBFOLDER; shared across all its descendants so the cap
+ *   applies to the whole subtree, not just its immediate children.
  * @returns {Promise<Array<object>>}
  */
-async function scanDirRecursive(rootDir, relative, counters) {
+async function scanDirRecursive(rootDir, relative, counters, localCounters) {
   const entries = [];
   const abs = relative ? path.join(rootDir, relative) : rootDir;
   let dirents;
@@ -78,14 +85,45 @@ async function scanDirRecursive(rootDir, relative, counters) {
         extension: '',
         absolutePath: full,
       });
+
+      if (localCounters) {
+        localCounters.count += 1;
+        if (localCounters.count > MAX_ENTRIES_PER_SUBFOLDER) {
+          throw new Error('SUBFOLDER_TOO_LARGE');
+        }
+      }
+
       if (rel.split('/').length < MAX_DEPTH) {
-        entries.push(...(await scanDirRecursive(rootDir, rel, counters)));
+        if (localCounters) {
+          // Already throttling an ancestor subtree — keep using the same counter.
+          entries.push(...(await scanDirRecursive(rootDir, rel, counters, localCounters)));
+        } else {
+          // Start throttling this subtree; if it turns out too large, skip it entirely
+          // instead of failing the whole scan (e.g. a nested node_modules).
+          try {
+            entries.push(...(await scanDirRecursive(rootDir, rel, counters, { count: 0 })));
+          } catch (e) {
+            if (e instanceof Error && e.message === 'SUBFOLDER_TOO_LARGE') {
+              counters.skippedFolders.push(rel);
+            } else {
+              throw e;
+            }
+          }
+        }
       }
     } else if (dirent.isFile()) {
       if (counters.fileCount >= MAX_FILES) {
         throw new Error('LIMIT_EXCEEDED');
       }
       counters.fileCount += 1;
+
+      if (localCounters) {
+        localCounters.count += 1;
+        if (localCounters.count > MAX_ENTRIES_PER_SUBFOLDER) {
+          throw new Error('SUBFOLDER_TOO_LARGE');
+        }
+      }
+
       const parts = dirent.name.split('.');
       const extension = parts.length > 1 ? (parts.pop() || '').toLowerCase() : '';
       let st;
@@ -139,8 +177,9 @@ function registerIpc() {
   });
 
   ipcMain.handle('native:scanFolder', async (_evt, rootPath) => {
-    const counters = { folderCount: 0, fileCount: 0 };
-    return scanDirRecursive(rootPath, '', counters);
+    const counters = { folderCount: 0, fileCount: 0, skippedFolders: [] };
+    const entries = await scanDirRecursive(rootPath, '', counters);
+    return { entries, skippedFolders: counters.skippedFolders };
   });
 
   ipcMain.handle('native:readFile', async (_evt, workspaceRoot, relativeOrAbs) => {

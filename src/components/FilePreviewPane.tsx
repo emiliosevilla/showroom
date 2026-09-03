@@ -14,6 +14,7 @@ const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'];
 const VIDEO_EXTS = ['mp4', 'webm', 'ogg'];
 const AUDIO_EXTS = ['mp3', 'wav', 'ogg'];
 const TEXT_EXTS = ['txt', 'md', 'json', 'csv', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'py'];
+const DOCX_EXTS = ['docx'];
 
 type Props = {
   fileEntry?: FileEntry | null;
@@ -111,7 +112,8 @@ export function FilePreviewPane({ fileEntry, name = '', className = '', emptyLab
   const isAudio = AUDIO_EXTS.includes(ext);
   const isText = TEXT_EXTS.includes(ext);
   const isPdf = ext === 'pdf';
-  const canContentPreview = isImage || isPdf || isVideo || isAudio || isText;
+  const isDocx = DOCX_EXTS.includes(ext);
+  const canContentPreview = isImage || isPdf || isVideo || isAudio || isText || isDocx;
 
   const previewUrl = useMemo(() => {
     if (!fileEntry?.fileObject) return '';
@@ -135,6 +137,8 @@ export function FilePreviewPane({ fileEntry, name = '', className = '', emptyLab
     setScale(1);
     setPage(0);
     setTextContent(null);
+    setDocHtml(null);
+    setDocError(false);
   }, [fileEntry?.path]);
 
   const [textContent, setTextContent] = useState<string | null>(null);
@@ -146,6 +150,34 @@ export function FilePreviewPane({ fileEntry, name = '', className = '', emptyLab
       fileEntry.fileObject.text().then(setTextContent).catch(() => setTextContent(t('preview_read_error') as string));
     }
   }, [isText, fileEntry, t]);
+
+  const [docHtml, setDocHtml] = useState<string | null>(null);
+  const [docError, setDocError] = useState(false);
+
+  useEffect(() => {
+    if (!isDocx || !fileEntry?.fileObject) return;
+    let cancelled = false;
+    setDocHtml(null);
+    setDocError(false);
+    Promise.all([
+      import('mammoth'),
+      import('dompurify'),
+      fileEntry.fileObject.arrayBuffer(),
+    ])
+      .then(([mammoth, DOMPurify, arrayBuffer]) => {
+        if (cancelled) return;
+        return mammoth.convertToHtml({ arrayBuffer }).then((result) => {
+          if (cancelled) return;
+          setDocHtml(DOMPurify.default.sanitize(result.value));
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setDocError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isDocx, fileEntry]);
 
   const totalPages = textContent ? Math.ceil(textContent.length / pageSize) : 0;
   const currentTextPage = textContent ? textContent.slice(page * pageSize, (page + 1) * pageSize) : '';
@@ -265,6 +297,21 @@ export function FilePreviewPane({ fileEntry, name = '', className = '', emptyLab
           <audio controls className="w-full max-w-md">
             <source src={previewUrl} type={`audio/${ext}`} />
           </audio>
+        </div>
+      )}
+
+      {isDocx && (
+        <div className="flex-1 overflow-auto p-6 custom-scrollbar bg-white">
+          {docError ? (
+            <div className="flex flex-col items-center justify-center h-full text-text-secondary gap-2">
+              <FileQuestion className="w-10 h-10 opacity-40" />
+              <p className="text-sm">{t('preview_read_error')}</p>
+            </div>
+          ) : docHtml === null ? (
+            <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin text-indigo-500 w-8 h-8" /></div>
+          ) : (
+            <div className="docx-preview max-w-3xl mx-auto text-sm text-neutral-900" dangerouslySetInnerHTML={{ __html: docHtml }} />
+          )}
         </div>
       )}
 
